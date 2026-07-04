@@ -1,6 +1,10 @@
 <?php
-
+use App\Http\Controllers\FavoritesController;
+use App\Http\Controllers\RankingController;
+use App\Http\Controllers\BooksController;
 use App\Http\Controllers\LoginController;
+use App\Http\Controllers\GenresController;
+use GuzzleHttp\Middleware;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,3 +20,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/register', [LoginController::class, 'register'])->name('register');
 Route::get('/login', [LoginController::class, 'login'])->name('login');
+Route::get('/books', [BooksController::class, 'index'])->name('books.index');
+Route::get('/ranking', [RankingController::class, 'index'])->name('ranking.index');
+
+
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/books/create', [BooksController::class, 'create'])->name('books.create');
+    Route::get('/favorites', [FavoritesController::class, 'index'])->name('favorites.index');
+    Route::get('/genres', [GenresController::class, 'index'])->name('genres.index');
+});
