@@ -19,6 +19,7 @@ use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Contracts\RegisterResponse;
 use Laravel\Fortify\Http\Responses\RegisterResponse as FortifyRegisterResponse;
 use Illuminate\Auth\Events\Login;
+use Laravel\Fortify\Contracts\LogoutResponse;
 
 use Illuminate\Support\Facades\Hash;
 class FortifyServiceProvider extends ServiceProvider
@@ -52,7 +53,7 @@ class FortifyServiceProvider extends ServiceProvider
                 return $user;
             }
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'email' => ['入力情報が間違っています。'],
+                'email' => ['メールアドレスまたはパスワードが間違っています。'],
             ]);
         });
         Event::listen(Registered::class, function ($event) {
@@ -85,5 +86,17 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('two-factor', function (Request $request) {
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
-    }
+        Fortify::registerView(function () {
+            return view('auth.register');
+            });
+        Fortify::loginView(function () {
+            return view('auth.login');
+        }); 
+        $this->app->instance(LogoutResponse::class, new class implements LogoutResponse {
+        public function toResponse($request)
+        {
+            return redirect('/login');
+        }});
+        }
 }
+

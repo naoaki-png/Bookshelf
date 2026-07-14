@@ -2,7 +2,6 @@
 use App\Http\Controllers\FavoritesController;
 use App\Http\Controllers\RankingController;
 use App\Http\Controllers\BooksController;
-use App\Http\Controllers\LoginController;
 use App\Http\Controllers\GenresController;
 use GuzzleHttp\Middleware;
 use Illuminate\Support\Facades\Route;
@@ -18,8 +17,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/register', [LoginController::class, 'register'])->name('register');
-Route::get('/login', [LoginController::class, 'login'])->name('login');
 Route::get('/books', [BooksController::class, 'index'])->name('books.index');
 Route::get('/ranking', [RankingController::class, 'index'])->name('ranking.index');
 
