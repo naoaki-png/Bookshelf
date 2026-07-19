@@ -21,6 +21,17 @@ class Review extends Model
     {
         return $this->belongsTo(BookUser::class);
     }
+    public function user()
+    {
+        return $this->hasOneThrough(
+            User::class,
+            BookUser::class,
+            'id',
+            'id',
+            'book_user_id',
+            'user_id'
+        );
+    }
 
     public function reviewLikes()
     {
