@@ -20,10 +20,11 @@ class Book extends Model
         'description',
         'published_date',
         'image_url',
+        'user_id'
     ];
 
     protected $casts = [
-        'published_date' => 'date',
+        'published_date' => 'date:Y-m-d',
     ];
 
     public function bookGenres()
@@ -56,6 +57,17 @@ class Book extends Model
     {
         return $this->belongsToMany(User::class, 'favorites')
             ->withTimestamps();
+    }
+    public function reviews()
+    {
+        return $this->hasManyThrough(
+            Review::class,
+            BookUser::class,
+            'book_id',
+            'book_user_id',
+            'id',
+            'id'
+        );
     }
 
 }
