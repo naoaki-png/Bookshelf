@@ -26,7 +26,7 @@
                     @else
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             @foreach($books as $book)
-                                <a href="{{ route('books.show', $book) }}" class="block border rounded-lg p-4 shadow hover:shadow-lg transition cursor-pointer">
+                                <a href="{{ route('books.show', [$book, 'page'=> request('page')])}}" class="block border rounded-lg p-4 shadow hover:shadow-lg transition cursor-pointer">
                                     @if($book->image_url)
                                         <img src="{{ $book->image_url }}" alt="{{ $book->title }}" class="w-full h-48 object-cover mb-4 rounded">
                                     @else
@@ -64,7 +64,7 @@
                         </div>
 
                         <div class="mt-6">
-                            {{ $books->links() }}
+                            {{ $books->links()}}
                         </div>
                     @endif
                 </div>
