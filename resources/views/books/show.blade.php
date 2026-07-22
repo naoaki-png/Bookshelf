@@ -94,7 +94,7 @@
                     </div>
 
                     <!-- レビューセクション -->
-                    <div class="mt-8 pt-8 border-t border-gray-200">
+                    <div class="mt-8 pt-8 border-t border-gray-200" id="review-section">
                         <h2 class="text-xl font-bold mb-4">レビュー</h2>
 
                         @auth
@@ -143,7 +143,7 @@
                         @if($book->reviews->count() > 0)
                             <div class="space-y-4">
                                 @foreach($book->reviews as $review)
-                                    <div class="border rounded-lg p-4">
+                                    <div class="border rounded-lg p-4" id="review-{{ $review->id }}">
                                         <div class="flex items-center justify-between mb-2">
                                             <div>
                                                 <span class="font-semibold">{{ $review->user->name }}</span>
@@ -215,7 +215,7 @@
             </div>
 
             <div class="mt-4">
-                <a href="{{ route('books.index') }}" class="text-blue-600 hover:underline">← 一覧に戻る</a>
+                <a href="{{ route('books.index',['page' => request('page')])}}" class="text-blue-600 hover:underline">← 一覧に戻る</a>
             </div>
         </div>
     </div>

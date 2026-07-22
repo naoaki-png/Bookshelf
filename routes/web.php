@@ -38,6 +38,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/genres/{genre}/edit', [GenresController::class, 'edit'])->name('genres.edit');
     Route::get('/reviews/{review}/edit', [ReviewsController::class, 'edit'])->name('reviews.edit');
     Route::post('/reviews/{review}/like', [ReviewsController::class, 'like'])->name('reviews.like');
+    Route::put('/reviews/{review}', [ReviewsController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}', [ReviewsController::class, 'destroy'])->name('reviews.destroy');
 
 });
