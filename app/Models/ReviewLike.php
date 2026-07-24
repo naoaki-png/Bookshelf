@@ -10,7 +10,7 @@ class ReviewLike extends Model
 {
     use HasFactory;
 
-    protected $table = 'review_like';
+    protected $table = 'review_likes';
 
     protected $fillable = [
         'user_id',

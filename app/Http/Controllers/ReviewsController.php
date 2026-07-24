@@ -48,8 +48,20 @@ class ReviewsController extends Controller
         $book = $review->bookUser->book;
         $review->delete();
         return redirect(route('books.show', $book) . '#review-section');
+    }
 
+    public function like(Review $review)
+    {
+        $user = Auth::user();
+        $like = $user->reviewLikes()->where('review_id', $review->id)->first();
 
+        if ($like) {
+            $like->delete();
+        } else {
+            $user->reviewLikes()->create(['review_id' => $review->id]);
+        }
+        $book = $review->bookUser->book;
+        return redirect(route('books.show', $book) . '#review-' . $review->id);
     }
     //
 }
