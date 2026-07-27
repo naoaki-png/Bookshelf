@@ -26,6 +26,17 @@ class GenresController extends Controller
         Genre::create($data);
         return redirect(route('genres.index'))->with('success', 'ジャンルを登録しました。');
     }
+    public function edit(Genre $genre)
+    {
+        return view('genres.edit', compact('genre'));
+
+    }
+    public function update(GenreRequest $request, Genre $genre)
+    {
+        $data = $request->only('name');
+        $genre->update($data);
+        return redirect(route('genres.index'))->with('success', 'ジャンルを変更しました。');
+    }
 
     public function destroy(Genre $genre)
     {
