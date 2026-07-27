@@ -37,6 +37,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/genres/{genre}', [GenresController::class, 'show'])->name('genres.show');
     Route::post('/books/{book}/reviews', [ReviewsController::class, 'store'])->name('reviews.store');
     Route::get('/genres/{genre}/edit', [GenresController::class, 'edit'])->name('genres.edit');
+    Route::put('/genres/{genre}/edit', [GenresController::class, 'update'])->name('genres.update');
     Route::delete('/genres/{genre}', [GenresController::class, 'destroy'])->name('genres.destroy');
     Route::get('/reviews/{review}/edit', [ReviewsController::class, 'edit'])->name('reviews.edit');
 

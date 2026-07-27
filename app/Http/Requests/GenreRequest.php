@@ -21,12 +21,14 @@ class GenreRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => ['required', 'string', 'max:255', 'unique:genres,name']
         ];
-        if ($this->route('book')) {
+        if ($this->route('genre')) {
+            $rules['name'] = ['required', 'string', 'max:255', 'unique:genres,name,' . $this->route('genre')->id];
 
         }
+        return $rules;
     }
     public function messages(): array
     {
