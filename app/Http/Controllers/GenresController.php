@@ -19,6 +19,12 @@ class GenresController extends Controller
     {
         return view('genres.create');
     }
+    public function show(Genre $genre)
+    {
+        $books = $genre->books()->paginate(10);
+        return view('genres.show', compact('books', 'genre'));
+
+    }
 
     public function store(GenreRequest $request)
     {
