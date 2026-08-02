@@ -46,7 +46,7 @@ class BooksController extends Controller
     }
     public function update(Book $book, BookRequest $request)
     {
-        $data = $request->only('title', 'author', 'isbn', 'description', 'published_date', 'image_url', 'genres');
+        $data = $request->only('title', 'author', 'isbn', 'description', 'published_date', 'image_url');
         $book->update($data);
         $book->genres()->sync($request->input('genres'));
         return redirect(route('books.show', $book));
