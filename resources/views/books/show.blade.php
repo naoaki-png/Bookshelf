@@ -59,8 +59,8 @@
                             </div>
 
                             <p class="text-gray-600 mb-2"><strong>著者:</strong> {{ $book->author }}</p>
-                            <p class="text-gray-600 mb-2"><strong>ISBN:</strong> {{ $book->isbn }}</p>
-                            <p class="text-gray-600 mb-2"><strong>出版日:</strong> {{ $book->published_date->format('Y-m-d') }}</p>
+                            <p class="text-gray-600 mb-2"><strong>ISBN:</strong> {{ $book->isbn ?? '未登録' }}</p>
+                            <p class="text-gray-600 mb-2"><strong>出版日:</strong> {{ $book->published_date?->format('Y-m-d') ?? '未登録' }}</p>
                             <div class="mb-4">
                                 <strong>ジャンル:</strong>
                                 @foreach($book->genres as $genre)
@@ -94,7 +94,7 @@
                     </div>
 
                     <!-- レビューセクション -->
-                    <div class="mt-8 pt-8 border-t border-gray-200" id="review-section">
+                    <div class="mt-8 pt-8 border-t border-gray-200">
                         <h2 class="text-xl font-bold mb-4">レビュー</h2>
 
                         @auth
@@ -143,7 +143,7 @@
                         @if($book->reviews->count() > 0)
                             <div class="space-y-4">
                                 @foreach($book->reviews as $review)
-                                    <div class="border rounded-lg p-4" id="review-{{ $review->id }}">
+                                    <div class="border rounded-lg p-4">
                                         <div class="flex items-center justify-between mb-2">
                                             <div>
                                                 <span class="font-semibold">{{ $review->user->name }}</span>
@@ -160,7 +160,7 @@
                                         <div class="mt-3 flex items-center justify-between">
                                             <!-- いいねボタン -->
                                             @auth
-                                                @if(Auth::user()?->likedReviews?->contains($review->id))
+                                                @if(Auth::user()->likedReviews->contains($review->id))
                                                     <form action="{{ route('reviews.like', $review) }}" method="POST" class="inline" novalidate>
                                                         @csrf
                                                         <button type="submit" class="text-blue-500 hover:text-blue-700 text-sm flex items-center">
@@ -215,7 +215,7 @@
             </div>
 
             <div class="mt-4">
-                <a href="{{ route('books.index',['page' => request('page')])}}" class="text-blue-600 hover:underline">← 一覧に戻る</a>
+                <a href="{{ route('books.index') }}" class="text-blue-600 hover:underline">← 一覧に戻る</a>
             </div>
         </div>
     </div>
