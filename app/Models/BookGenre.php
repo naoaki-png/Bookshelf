@@ -11,7 +11,7 @@ use App\Models\Genre;
 class BookGenre extends Model
 {
     use HasFactory;
-    protected $table = 'book_genre';
+    protected $table = 'book_genres';
 
     protected $fillable = [
         'book_id',

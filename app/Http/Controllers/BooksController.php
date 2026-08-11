@@ -13,8 +13,8 @@ class BooksController extends Controller
 {
     public function index()
     {
-        $books = Book::paginate(10);
 
+        $books = Book::withAvg('reviews', 'rating')->with('genres')->orderByDesc('created_at')->orderByDesc('id')->paginate(10);
         return view('books.index', compact('books'));
     }
     public function show(Book $book)
@@ -39,6 +39,7 @@ class BooksController extends Controller
     }
     public function edit(Book $book)
     {
+        $this->authorize('update', $book);
         $genres = Genre::all();
 
 
@@ -46,6 +47,7 @@ class BooksController extends Controller
     }
     public function update(Book $book, BookRequest $request)
     {
+        $this->authorize('update', $book);
         $data = $request->only('title', 'author', 'isbn', 'description', 'published_date', 'image_url');
         $book->update($data);
         $book->genres()->sync($request->input('genres'));
@@ -53,6 +55,7 @@ class BooksController extends Controller
     }
     public function destroy(Book $book)
     {
+        $this->authorize('delete', $book);
         $book->delete();
         return redirect(route('books.index'));
     }
