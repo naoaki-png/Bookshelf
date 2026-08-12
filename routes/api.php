@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ApiBookController;
+use App\Http\Controllers\Api\AuthController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -15,9 +17,13 @@ use App\Http\Controllers\Api\ApiBookController;
 |
 */
 Route::prefix('v1')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
     Route::get('/books', [ApiBookController::class, 'index']);
     Route::get('/books/{book}', [ApiBookController::class, 'show']);
-    Route::post('/books', [ApiBookController::class, 'store']);
-    Route::put('/books/{book}', [ApiBookController::class, 'update']);
-    Route::delete('/books/{book}', [ApiBookController::class, 'destroy']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/books', [ApiBookController::class, 'store']);
+        Route::put('/books/{book}', [ApiBookController::class, 'update']);
+        Route::delete('/books/{book}', [ApiBookController::class, 'destroy']);
+        Route::post('/logout', [AuthController::class, 'logout']);
+    });
 });
