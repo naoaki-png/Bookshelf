@@ -54,16 +54,20 @@ class ValidationTest extends TestCase
      *
      * 前提: ログイン済みユーザー1人。書籍は0冊
      * 操作: 何も入れずに POST /books
-     * 期待: title / author / isbn / published_date / genres にエラー / books は0冊のまま
+     * 期待: title / author / genres にエラー / books は0冊のまま
      *
-     * 5項目をまとめて1本にしている理由:
-     * required は5項目とも同じルールで、1項目ずつテストを分けても
+     * 3項目をまとめて1本にしている理由:
+     * required は3項目とも同じルールで、1項目ずつテストを分けても
      * 検証していることは変わらない。「必須項目が空なら登録できない」で
      * 1つの仕様として扱ったほうが読みやすい。
      *
-     * 逆に description と image_url は nullable なので、
+     * 逆に isbn / published_date / description / image_url は nullable なので、
      * ここでエラーが出てはいけない。assertInvalid は指定したキーだけを
-     * 見るので、この2つが混ざっていないことは別途 assertValid で確かめる。
+     * 見るので、これらが混ざっていないことは別途 assertValid で確かめる。
+     *
+     * isbn と published_date は当初 required としていたが、配られた入力欄に
+     * 必須マークが付いておらず、任意項目として設計されていたことが分かったため
+     * 2026-08-13 に nullable へ変更した。この期待値はその仕様変更に追随したもの。
      */
     public function test_必須項目が空だと書籍は登録できない(): void
     {
@@ -71,8 +75,8 @@ class ValidationTest extends TestCase
 
         $response = $this->actingAs($user)->post('/books', []);
 
-        $response->assertInvalid(['title', 'author', 'isbn', 'published_date', 'genres']);
-        $response->assertValid(['description', 'image_url']);
+        $response->assertInvalid(['title', 'author', 'genres']);
+        $response->assertValid(['isbn', 'published_date', 'description', 'image_url']);
         $this->assertDatabaseCount('books', 0);
     }
 

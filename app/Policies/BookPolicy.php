@@ -38,20 +38,25 @@ class BookPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Book $book): bool
+    public function update(User $user, Book $book): bool|Response
     {
-        return $user->id === $book->user_id;
-
-        //
+        if ($user->id === $book->user_id) {
+            return true;
+        } else {
+            return Response::deny('他の人が登録した書籍は更新できません。');
+        }
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Book $book): bool
+    public function delete(User $user, Book $book): bool|Response
     {
-        return $user->id === $book->user_id;
-        //
+        if ($user->id === $book->user_id) {
+            return true;
+        } else {
+            return Response::deny('他の人が登録した書籍は削除できません。');
+        }
     }
 
     /**
