@@ -88,15 +88,16 @@ class FortifyServiceProvider extends ServiceProvider
         });
         Fortify::registerView(function () {
             return view('auth.register');
-            });
+        });
         Fortify::loginView(function () {
             return view('auth.login');
-        }); 
+        });
         $this->app->instance(LogoutResponse::class, new class implements LogoutResponse {
-        public function toResponse($request)
-        {
-            return redirect('/login');
-        }});
-        }
+            public function toResponse($request)
+            {
+                return redirect('/login');
+            }
+        });
+    }
 }
 

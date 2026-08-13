@@ -20,7 +20,7 @@ class BookShowResource extends JsonResource
             'author' => $this->author,
             'isbn' => $this->isbn,
             'description' => $this->description,
-            'published_date' => $this->published_date->format('Y-m-d H:i'),
+            'published_date' => $this->published_date?->format('Y-m-d'),
             'genres' => $this->genres->pluck('name'),
             'reviews' => BookReviewResource::collection($this->reviews),
         ];

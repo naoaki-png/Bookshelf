@@ -40,7 +40,9 @@ class ApiBookController extends Controller
      */
     public function store(ApiBookRequest $request)
     {
-        $data = $request->only(['title', 'author', 'isbn', 'description', 'published_date', 'image_url']);
+        $data = $request->only(['title', 'author', 'isbn', 'description', 'published_date', 'image_url',]);
+        $user = $request->user();
+        $data['user_id'] = $user->id;
         $book = Book::create($data);
         $book->genres()->sync($request->input('genres'));
         return (new BookShowResource($book))->response()->setStatusCode(201);
@@ -63,6 +65,7 @@ class ApiBookController extends Controller
      */
     public function update(ApiBookRequest $request, Book $book)
     {
+        $this->authorize('update', $book);
         $data = $request->only('title', 'author', 'isbn', 'description', 'published_date', 'image_url');
         $book->update($data);
         $book->genres()->sync($request->input('genres'));
@@ -74,6 +77,7 @@ class ApiBookController extends Controller
      */
     public function destroy(Book $book)
     {
+        $this->authorize('delete', $book);
         $book->delete();
         return response('', 204);
     }
