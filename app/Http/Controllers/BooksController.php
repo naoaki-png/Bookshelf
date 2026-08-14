@@ -7,16 +7,44 @@ use App\Models\Book;
 use App\Models\Review;
 use App\Models\Genre;
 use App\Http\Requests\BookRequest;
+use App\Http\Requests\BookIndexRequest;
 use Auth;
 
 class BooksController extends Controller
 {
-    public function index()
+    public function index(BookIndexRequest $request)
     {
+        $genres = Genre::all();
+        $books = Book::withAvg('reviews', 'rating')->with('genres');
 
-        $books = Book::withAvg('reviews', 'rating')->with('genres')->orderByDesc('created_at')->orderByDesc('id')->paginate(10);
-        return view('books.index', compact('books'));
+        $keyword = $request->input('keyword');
+        if ($keyword) {
+            $books->where(function ($q) use ($keyword) {
+                $q->where('title', 'like', '%' . $keyword . '%')
+                    ->orWhere('author', 'like', '%' . $keyword . '%');
+            });
+        }
+
+        $genreId = $request->input('genre');
+        if ($genreId) {
+            $books->whereHas('genres', function ($query) use ($genreId) {
+                $query->where('genres.id', $genreId);
+            });
+        }
+        $sort = $request->input('sort') ?? 'newest';
+        if ($sort === 'newest') {
+            $books->orderByDesc('created_at')->orderByDesc('id');
+        } elseif ($sort === 'oldest') {
+            $books->orderBy('created_at')->orderBy('id');
+        } elseif ($sort === 'rating') {
+            $books->orderByDesc('reviews_avg_rating');
+        } elseif ($sort === 'title') {
+            $books->orderBy('title');
+        }
+        $books = $books->paginate(10)->withQueryString();
+        return view('books.index', compact('books', 'genres'));
     }
+
     public function show(Book $book)
     {
         $book->load('reviews');
@@ -61,4 +89,5 @@ class BooksController extends Controller
     }
 
     //
+
 }
