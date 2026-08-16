@@ -35,6 +35,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/genres', [GenresController::class, 'index'])->name('genres.index');
     Route::get('/books/{book}/edit', [BooksController::class, 'edit'])->name('books.edit');
     Route::put('/books/{book}', [BooksController::class, 'update'])->name('books.update');
+    Route::get('/books/isbn/{isbn}', [BooksController::class, 'searchByIsbn']);
     Route::get('/genres/create', [GenresController::class, 'create'])->name('genres.create');
     Route::post('/genres', [GenresController::class, 'store'])->name('genres.store');
     Route::get('/genres/{genre}', [GenresController::class, 'show'])->name('genres.show');
