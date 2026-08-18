@@ -95,31 +95,34 @@ class BooksController extends Controller
     public function searchByIsbn(IsbnSearchRequest $request)
     {
         $isbn = $request->validated()['isbn'];
-        try{
-        $response = Http::timeout(3)->get('https://www.googleapis.com/books/v1/volumes', ['q' => 'isbn:' . $isbn,]);}catch (ConnectionException $e) {return response()->json(['error'=>'書籍情報の取得に失敗しました。時間をおいて再度お試しください。'],502) ;}
-        if($response->failed()){
-            return response()->json(['error'=>'書籍情報の取得に失敗しました。時間をおいて再度お試しください。'],502);
+        try {
+            $response = Http::timeout(3)->get('https://www.googleapis.com/books/v1/volumes', ['q' => 'isbn:' . $isbn, 'key' => config('services.google_books.api_key'),]);
+        } catch (ConnectionException $e) {
+            return response()->json(['error' => '書籍情報の取得に失敗しました。時間をおいて再度お試しください。'], 502);
         }
-    if ( $response->json('totalItems') == 0 ) {
-    return response()->json(['error'=>'該当する書籍が見つかりませんでした。'],404) ;
-    }
-    $volumeInfo = $response->json('items.0.volumeInfo');
-    $length = strlen($volumeInfo['publishedDate']?? '');
-    if($length == 4){
-        $volumeInfo['publishedDate'] = $volumeInfo['publishedDate'] . '-01-01';
-    }elseif ($length == 7) {
-        $volumeInfo['publishedDate'] = $volumeInfo['publishedDate'] . '-01';
-    }
+        if ($response->failed()) {
+            return response()->json(['error' => '書籍情報の取得に失敗しました。時間をおいて再度お試しください。'], 502);
+        }
+        if ($response->json('totalItems') == 0 || $response->json('items') == null) {
+            return response()->json(['error' => '該当する書籍が見つかりませんでした。'], 404);
+        }
+        $volumeInfo = $response->json('items.0.volumeInfo');
+        $length = strlen($volumeInfo['publishedDate'] ?? '');
+        if ($length == 4) {
+            $volumeInfo['publishedDate'] = $volumeInfo['publishedDate'] . '-01-01';
+        } elseif ($length == 7) {
+            $volumeInfo['publishedDate'] = $volumeInfo['publishedDate'] . '-01';
+        }
 
-    $imageUrl =$volumeInfo['imageLinks']['thumbnail']?? '';
-    $imageUrl = Str::replaceStart('http://', 'https://', $imageUrl);
-    return [
-    'title'=> $volumeInfo['title']?? null,
-    'author'=> implode(',',$volumeInfo['authors']??[]),
-    'description' => $volumeInfo['description']?? null,
-    'image_url'=> $imageUrl,
-    'published_date'=> $volumeInfo['publishedDate']?? '',
-];
+        $imageUrl = $volumeInfo['imageLinks']['thumbnail'] ?? '';
+        $imageUrl = Str::replaceStart('http://', 'https://', $imageUrl);
+        return [
+            'title' => $volumeInfo['title'] ?? null,
+            'author' => implode('・', $volumeInfo['authors'] ?? []),
+            'description' => $volumeInfo['description'] ?? null,
+            'image_url' => $imageUrl,
+            'published_date' => $volumeInfo['publishedDate'] ?? '',
+        ];
 
-}
+    }
 }

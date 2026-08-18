@@ -209,7 +209,7 @@ class IsbnSearchTest extends TestCase
         $response->assertOk();
         $response->assertExactJson([
             'title' => 'ノルウェイの森',
-            'author' => '村上 春樹,共著者',
+            'author' => '村上 春樹・共著者',
             'description' => '説明文',
             'image_url' => 'https://books.google.com/books/content?id=X',
             'published_date' => '2004-09-01',
@@ -377,5 +377,80 @@ class IsbnSearchTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertExactJson(['error' => 'ISBNを確認してください。']);
+    }
+
+    /**
+     * 検証⑬ totalItems が 1 以上でも、items が無ければ「該当なし」として扱う。
+     *
+     * Google Books は totalItems だけ返して items を含めないことがある。
+     * totalItems == 0 しか見ていないと、この応答がすり抜けて
+     * $volumeInfo が null になり、以降が全部 ?? '' で受け止められる。
+     * 結果、200 と中身が空の5項目が返る。JS は data.error が無いので
+     * 「書籍情報を取得しました。」と表示し、フォームを空文字で上書きする。
+     * 失敗が成功に見える形なので、404 で止まることを固定する。
+     */
+    public function test_itemsが無い応答は該当なしとして扱う(): void
+    {
+        Http::fake(['*' => Http::response([
+            'kind' => 'books#volumes',
+            'totalItems' => 1,
+        ], 200)]);
+
+        $response = $this->検索(self::未登録のISBN);
+
+        $response->assertStatus(404);
+        $response->assertExactJson(['error' => '該当する書籍が見つかりませんでした。']);
+    }
+
+    /**
+     * 検証⑭ 設定した API キーが、クエリに載って送られる。
+     *
+     * キーが抜けても、このエンドポイントは 502 を返すだけで、画面には
+     * 「時間をおいて再度お試しください」としか出ない。つまり設定漏れと
+     * Google の一時障害が、画面上まったく同じに見える。
+     * キーが実際に載っているかは、ここでしか固定できない。
+     *
+     * config() を直接差し替えているのは、テスト用の .env を増やさないため。
+     * ここで見たいのは「.env が読めるか」ではなく
+     * 「config の値がクエリまで届くか」の一点。
+     */
+    public function test_APIキーがクエリに付いて送られる(): void
+    {
+        config(['services.google_books.api_key' => 'テスト用のキー']);
+        $this->google応答(['title' => '本']);
+
+        $this->検索(self::未登録のISBN);
+
+        Http::assertSent(function ($request) {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $クエリ);
+
+            return ($クエリ['key'] ?? null) === 'テスト用のキー';
+        });
+    }
+
+    /**
+     * 検証⑮【意図した挙動】キーが未設定なら、key を付けずに送る。
+     *
+     * 「設定漏れでもアプリは止めない」という判断でこうしている。
+     * 業務中に画面が完全に使えなくなるより、動き続けて不調の連絡を
+     * 受けるほうが実害が小さい、という理由。
+     *
+     * ただしコードに分岐は書いていない。config() が null を返すと
+     * http_build_query が要素ごと落とすので、key= が付かなくなる。
+     * この挙動を保証しているのは PHP の仕様だけで、コード上のどこにも
+     * 現れない。ここで固定しておかないと、誰も気づかないまま壊れる。
+     */
+    public function test_APIキーが未設定ならkeyを付けずに送る(): void
+    {
+        config(['services.google_books.api_key' => null]);
+        $this->google応答(['title' => '本']);
+
+        $this->検索(self::未登録のISBN);
+
+        Http::assertSent(function ($request) {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $クエリ);
+
+            return ! array_key_exists('key', $クエリ);
+        });
     }
 }
