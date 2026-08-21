@@ -55,8 +55,14 @@ class User extends Authenticatable
 
     public function reviews()
     {
-        return $this->belongsToMany(Review::class)
-            ->withTimestamps();
+        return $this->hasManyThrough(
+            Review::class,
+            BookUser::class,
+            'user_id',
+            'book_user_id',
+            'id',
+            'id'
+        );
     }
     public function favorites()
     {
