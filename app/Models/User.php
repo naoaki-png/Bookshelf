@@ -12,6 +12,8 @@ use App\Models\Book;
 use App\Models\Review;
 use App\Models\BookUser;
 use App\Models\Favorite;
+use App\Models\ReadingPlan;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -78,5 +80,9 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Review::class, 'review_likes')
             ->withTimestamps();
+    }
+    public function readingPlans(): HasMany
+    {
+        return $this->hasMany(ReadingPlan::class);
     }
 }
