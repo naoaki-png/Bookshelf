@@ -7,7 +7,6 @@ use App\Http\Controllers\ReviewsController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ReadingPlansController;
 use App\Http\Controllers\NotificationsController;
-use GuzzleHttp\Middleware;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -48,9 +47,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reviews/{review}/like', [ReviewsController::class, 'like'])->name('reviews.like');
     Route::put('/reviews/{review}', [ReviewsController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}', [ReviewsController::class, 'destroy'])->name('reviews.destroy');
-
+    Route::get('/notifications', [NotificationsController::class, 'index'])->name('notifications.index');
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
     Route::get('/reading-plans', [ReadingPlansController::class, 'index'])->name('reading-plans.index');
-    Route::get('/notifications', [NotificationsController::class, 'index'])->name('notifications.index');
+    Route::post('/reading-plans', [ReadingPlansController::class, 'store'])->name('reading-plans.store');
+    Route::get('/reading-plans/create', [ReadingPlansController::class, 'create'])->name('reading-plans.create');
+    Route::get('/reading-plans/{plan}/edit', [ReadingPlansController::class, 'edit'])->name('reading-plans.edit');
+    Route::put('/reading-plans/{plan}', [ReadingPlansController::class, 'update'])->name('reading-plans.update');
+    Route::delete('/reading-plans/{plan}', [ReadingPlansController::class, 'destroy'])->name('reading-plans.destroy');
+    Route::post('/reading-plans/{plan}/complete', [ReadingPlansController::class, 'complete'])->name('reading-plans.complete');
 
 });
