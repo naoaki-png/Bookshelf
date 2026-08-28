@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use App\Http\Requests\StoreReadingPlanRequest;
 use App\Http\Requests\UpdateReadingPlanRequest;
 use App\Enums\ReadingPlanStatus;
+use Illuminate\Support\Facades\Log;
 
 class ReadingPlansController extends Controller
 {
@@ -53,7 +54,12 @@ class ReadingPlansController extends Controller
     public function store(StoreReadingPlanRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        Auth::user()->readingPlans()->create($data);
+        try {
+            Auth::user()->readingPlans()->create($data);
+        } catch (\Exception $e) {
+            Log::error($e->getMessage(), ['user_id' => Auth::id()]);
+            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
+        }
         return redirect(route('reading-plans.index'))->with('success', '読書計画を登録しました');
     }
     /**
@@ -77,7 +83,12 @@ class ReadingPlansController extends Controller
     public function update(UpdateReadingPlanRequest $request, ReadingPlan $plan): RedirectResponse
     {
         $this->authorize('update', $plan);
-        $plan->update($request->validated());
+        try {
+            $plan->update($request->validated());
+        } catch (\Exception $e) {
+            Log::error($e->getMessage(), ['plan_id' => $plan->id, 'target_date' => $request->target_date]);
+            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
+        }
         return redirect(route('reading-plans.index'))->with('success', '読書計画を更新しました');
     }
     /**
@@ -89,7 +100,12 @@ class ReadingPlansController extends Controller
     public function destroy(ReadingPlan $plan): RedirectResponse
     {
         $this->authorize('delete', $plan);
-        $plan->delete();
+        try {
+            $plan->delete();
+        } catch (\Exception $e) {
+            Log::error($e->getMessage(), ['plan_id' => $plan->id]);
+            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
+        }
         return redirect(route('reading-plans.index'))->with('success', '読書計画を削除しました');
     }
     /**
@@ -101,9 +117,17 @@ class ReadingPlansController extends Controller
     public function complete(ReadingPlan $plan): RedirectResponse
     {
         $this->authorize('complete', $plan);
-        $plan->status = ReadingPlanStatus::Completed;
-        $plan->completed_at = now();
-        $plan->save();
+        if ($plan->status === ReadingPlanStatus::Completed) {
+            return redirect(route('reading-plans.index'))->with('error', 'この計画はすでに完了済みです');
+        }
+        try {
+            $plan->status = ReadingPlanStatus::Completed;
+            $plan->completed_at = now();
+            $plan->save();
+        } catch (\Exception $e) {
+            Log::error($e->getMessage(), ['plan_id' => $plan->id]);
+            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
+        }
         return redirect(route('reading-plans.index'))->with('success', '読書計画を完了しました');
     }
 }
