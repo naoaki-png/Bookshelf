@@ -48,6 +48,8 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/reviews/{review}', [ReviewsController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}', [ReviewsController::class, 'destroy'])->name('reviews.destroy');
     Route::get('/notifications', [NotificationsController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [NotificationsController::class, 'read'])->name('notifications.read');
+
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
     Route::get('/reading-plans', [ReadingPlansController::class, 'index'])->name('reading-plans.index');
     Route::post('/reading-plans', [ReadingPlansController::class, 'store'])->name('reading-plans.store');
