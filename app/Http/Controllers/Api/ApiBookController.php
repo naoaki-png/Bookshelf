@@ -10,6 +10,7 @@ use App\Http\Resources\BookReviewResource;
 use App\Http\Requests\ApiBookIndexRequest;
 use App\Http\Resources\BookIndexResource;
 use App\Http\Requests\ApiBookRequest;
+use Illuminate\Support\Facades\DB;
 
 class ApiBookController extends Controller
 {
@@ -43,10 +44,12 @@ class ApiBookController extends Controller
         $data = $request->only(['title', 'author', 'isbn', 'description', 'published_date', 'image_url',]);
         $user = $request->user();
         $data['user_id'] = $user->id;
-        $book = Book::create($data);
-        $book->genres()->sync($request->input('genres'));
+        $book = DB::transaction(function () use ($data, $request) {
+            $book = Book::create($data);
+            $book->genres()->sync($request->input('genres'));
+            return $book;
+        });
         return (new BookShowResource($book))->response()->setStatusCode(201);
-
         //
     }
 
@@ -67,8 +70,10 @@ class ApiBookController extends Controller
     {
         $this->authorize('update', $book);
         $data = $request->only('title', 'author', 'isbn', 'description', 'published_date', 'image_url');
-        $book->update($data);
-        $book->genres()->sync($request->input('genres'));
+        DB::transaction(function () use ($data, $book, $request) {
+            $book->update($data);
+            $book->genres()->sync($request->input('genres'));
+        });
         return new BookShowResource($book);
     }
 

@@ -8,6 +8,7 @@ use App\Models\Review;
 use App\Http\Requests\ReviewRequest;
 use App\Models\Book;
 use App\Models\BookUser;
+use Illuminate\Support\Facades\DB;
 
 class ReviewsController extends Controller
 {
@@ -15,12 +16,14 @@ class ReviewsController extends Controller
     {
         $data = $request->only('rating', 'comment');
         $user = Auth::user();
-        $bookUser = BookUser::firstOrCreate([
-            'user_id' => $user->id,
-            'book_id' => $book->id,
-        ]);
-        $data['book_user_id'] = $bookUser->id;
-        $review = Review::create($data);
+        DB::transaction(function () use ($data, $user, $book) {
+            $bookUser = BookUser::firstOrCreate([
+                'user_id' => $user->id,
+                'book_id' => $book->id,
+            ]);
+            $data['book_user_id'] = $bookUser->id;
+            Review::create($data);
+        });
         return redirect(route('books.show', $book))->with('success', 'レビューを投稿しました');
 
     }
