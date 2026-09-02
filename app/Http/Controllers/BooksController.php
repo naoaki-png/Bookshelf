@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Auth;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class BooksController extends Controller
 {
@@ -65,8 +66,10 @@ class BooksController extends Controller
         $data = $request->only('title', 'author', 'isbn', 'description', 'published_date', 'image_url');
         $user = Auth::user();
         $data['user_id'] = $user->id;
-        $book = Book::create($data);
-        $book->genres()->sync($request->input('genres'));
+        DB::transaction(function () use ($data, $request) {
+            $book = Book::create($data);
+            $book->genres()->sync($request->input('genres'));
+        });
         return redirect(route('books.index'))->with('success', '書籍を登録しました');
     }
     public function edit(Book $book)
@@ -81,8 +84,10 @@ class BooksController extends Controller
     {
         $this->authorize('update', $book);
         $data = $request->only('title', 'author', 'isbn', 'description', 'published_date', 'image_url');
-        $book->update($data);
-        $book->genres()->sync($request->input('genres'));
+        DB::transaction(function () use ($data, $book, $request) {
+            $book->update($data);
+            $book->genres()->sync($request->input('genres'));
+        });
         return redirect(route('books.show', $book));
     }
     public function destroy(Book $book)
