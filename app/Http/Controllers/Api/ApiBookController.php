@@ -11,13 +11,19 @@ use App\Http\Requests\ApiBookIndexRequest;
 use App\Http\Resources\BookIndexResource;
 use App\Http\Requests\ApiBookRequest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 
 class ApiBookController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * 書籍一覧を表示する
+     *
+     * @param  \App\Http\Requests\ApiBookIndexRequest  $request
+     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection
      */
-    public function index(ApiBookIndexRequest $request)
+    public function index(ApiBookIndexRequest $request): AnonymousResourceCollection
     {
         $keyword = $request->input('keyword');
         $genreName = $request->input('genre');
@@ -37,9 +43,12 @@ class ApiBookController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * 書籍を登録する
+     *
+     * @param  \App\Http\Requests\ApiBookRequest  $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function store(ApiBookRequest $request)
+    public function store(ApiBookRequest $request): JsonResponse
     {
         $data = $request->only(['title', 'author', 'isbn', 'description', 'published_date', 'image_url',]);
         $user = $request->user();
@@ -50,23 +59,28 @@ class ApiBookController extends Controller
             return $book;
         });
         return (new BookShowResource($book))->response()->setStatusCode(201);
-        //
     }
 
     /**
-     * Display the specified resource.
+     * 書籍詳細を表示する
+     *
+     * @param  \App\Models\Book  $book
+     * @return \App\Http\Resources\BookShowResource
      */
-    public function show(Book $book)
+    public function show(Book $book): BookShowResource
     {
         $book->load('reviews', 'genres');
         return new BookShowResource($book);
-        //
     }
 
     /**
-     * Update the specified resource in storage.
+     * 書籍を更新する
+     *
+     * @param  \App\Http\Requests\ApiBookRequest  $request
+     * @param  \App\Models\Book  $book
+     * @return \App\Http\Resources\BookShowResource
      */
-    public function update(ApiBookRequest $request, Book $book)
+    public function update(ApiBookRequest $request, Book $book): BookShowResource
     {
         $this->authorize('update', $book);
         $data = $request->only('title', 'author', 'isbn', 'description', 'published_date', 'image_url');
@@ -78,9 +92,12 @@ class ApiBookController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * 書籍を削除する
+     *
+     * @param  \App\Models\Book  $book
+     * @return \Illuminate\Http\Response
      */
-    public function destroy(Book $book)
+    public function destroy(Book $book): Response
     {
         $this->authorize('delete', $book);
         $book->delete();
