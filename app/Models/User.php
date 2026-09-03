@@ -14,13 +14,15 @@ use App\Models\BookUser;
 use App\Models\Favorite;
 use App\Models\ReadingPlan;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
+     * 一括代入を許可する属性。
      *
      * @var array<int, string>
      */
@@ -30,32 +32,65 @@ class User extends Authenticatable
         'password',
     ];
 
+    /**
+     * 隠す属性。
+     *
+     * @var array<int, string>
+     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
+    /**
+     * ネイティブな型へキャストする属性。
+     *
+     * @var array<string, string>
+     */
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
 
-    public function bookUsers()
+    /**
+     * このユーザーと書籍の紐付けを保持する中間テーブルの行。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function bookUsers(): HasMany
     {
         return $this->hasMany(BookUser::class);
     }
 
-    public function books()
+    /**
+     * このユーザーが登録した書籍。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function books(): BelongsToMany
     {
         return $this->belongsToMany(Book::class)
             ->withTimestamps();
     }
-    public function reviewLikes()
+
+    /**
+     * このユーザーがいいねしたレビューの紐付けを保持する中間テーブルの行。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function reviewLikes(): HasMany
     {
         return $this->hasMany(ReviewLike::class);
     }
 
-    public function reviews()
+    /**
+     * このユーザーのレビュー。
+     *
+     * BookUserを経由してreviewsテーブルにアクセスする。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasManyThrough
+     */
+    public function reviews(): HasManyThrough
     {
         return $this->hasManyThrough(
             Review::class,
@@ -66,21 +101,44 @@ class User extends Authenticatable
             'id'
         );
     }
-    public function favorites()
+
+    /**
+     * このユーザーがお気に入りに登録した書籍の紐付けを保持する中間テーブルの行。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function favorites(): HasMany
     {
         return $this->hasMany(Favorite::class);
     }
 
-    public function favoriteBooks()
+    /**
+     * このユーザーがお気に入りに登録した書籍。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function favoriteBooks(): BelongsToMany
     {
         return $this->belongsToMany(Book::class, 'favorites')
             ->withTimestamps();
     }
-    public function likedReviews()
+
+    /**
+     * このユーザーがいいねしたレビュー。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function likedReviews(): BelongsToMany
     {
         return $this->belongsToMany(Review::class, 'review_likes')
             ->withTimestamps();
     }
+
+    /**
+     * このユーザーが作成した読書計画。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function readingPlans(): HasMany
     {
         return $this->hasMany(ReadingPlan::class);
