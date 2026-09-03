@@ -9,10 +9,22 @@ use App\Http\Requests\ReviewRequest;
 use App\Models\Book;
 use App\Models\BookUser;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class ReviewsController extends Controller
 {
-    public function store(ReviewRequest $request, Book $book)
+    /**
+     * レビューを投稿する。
+     *
+     * 読書記録(book_users)が無ければ作成し、そこにレビューを紐付ける。
+     * 2つの書き込みが揃って初めて意味を持つため、1つのトランザクションで扱う。
+     *
+     * @param  \App\Http\Requests\ReviewRequest  $request
+     * @param  \App\Models\Book  $book
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function store(ReviewRequest $request, Book $book): RedirectResponse
     {
         $data = $request->only('rating', 'comment');
         $user = Auth::user();
@@ -25,27 +37,48 @@ class ReviewsController extends Controller
             Review::create($data);
         });
         return redirect(route('books.show', $book))->with('success', 'レビューを投稿しました');
-
     }
-    public function edit(Review $review, Book $book)
+
+    /**
+     * レビューの編集画面を表示する。
+     *
+     * @param  \App\Models\Review  $review
+     * @param  \App\Models\Book  $book
+     * @return \Illuminate\View\View
+     */
+    public function edit(Review $review, Book $book): View
     {
         $this->authorize('update', $review);
         $review->book = $review->bookUser->book;
 
         return view('reviews.edit', compact('review'));
-
-
     }
-    public function update(ReviewRequest $request, Review $review)
+
+    /**
+     * レビューを更新する。
+     *
+     * 更新したレビューの位置まで書籍詳細ページを開き直す。
+     *
+     * @param  \App\Http\Requests\ReviewRequest  $request
+     * @param  \App\Models\Review  $review
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function update(ReviewRequest $request, Review $review): RedirectResponse
     {
         $this->authorize('update', $review);
         $data = $request->only('rating', 'comment');
         $review->update($data);
         $book = $review->bookUser->book;
         return redirect(route('books.show', $book) . '#review-' . $review->id);
-
     }
-    public function destroy(Review $review)
+
+    /**
+     * レビューを削除する。
+     *
+     * @param  \App\Models\Review  $review
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroy(Review $review): RedirectResponse
     {
         $this->authorize('delete', $review);
         $book = $review->bookUser->book;
@@ -53,7 +86,15 @@ class ReviewsController extends Controller
         return redirect(route('books.show', $book) . '#review-section');
     }
 
-    public function like(Review $review)
+    /**
+     * レビューへのいいねを切り替える。
+     *
+     * 既にいいね済みなら取り消し、未いいねなら登録する。
+     *
+     * @param  \App\Models\Review  $review
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function like(Review $review): RedirectResponse
     {
         $user = Auth::user();
         $like = $user->reviewLikes()->where('review_id', $review->id)->first();
@@ -66,5 +107,4 @@ class ReviewsController extends Controller
         $book = $review->bookUser->book;
         return redirect(route('books.show', $book) . '#review-' . $review->id);
     }
-    //
 }

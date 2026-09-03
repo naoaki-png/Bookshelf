@@ -9,10 +9,18 @@ use App\Models\User;
 use App\Models\BookGenre;
 use App\Models\Genre;
 use App\Models\Favorite;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Book extends Model
 {
     use HasFactory;
+    /**
+     * 一括代入を許可する属性。
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
         'title',
         'author',
@@ -23,42 +31,85 @@ class Book extends Model
         'user_id'
     ];
 
+    /**
+     * ネイティブな型へキャストする属性。
+     *
+     * @var array<string, string>
+     */
     protected $casts = [
         'published_date' => 'date:Y-m-d',
     ];
 
-    public function bookGenres()
+    /**
+     * この書籍とジャンルの紐付けを保持する中間テーブルの行。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function bookGenres(): HasMany
     {
         return $this->hasMany(BookGenre::class);
     }
 
-    public function genres()
+    /**
+     * この書籍に設定されたジャンル。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function genres(): BelongsToMany
     {
         return $this->belongsToMany(Genre::class, 'book_genres')
             ->withTimestamps();
     }
 
-    public function bookUsers()
+    /**
+     * この書籍とユーザーの紐付けを保持する中間テーブルの行。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function bookUsers(): HasMany
     {
         return $this->hasMany(BookUser::class);
     }
-    public function users()
+    /**
+     * この書籍にレビューを投稿したユーザー。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
             ->withTimestamps();
     }
 
-    public function favorites()
+    /**
+     * この書籍に投稿されたお気に入り。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function favorites(): HasMany
     {
         return $this->hasMany(Favorite::class);
     }
 
-    public function favoritedByUsers()
+    /**
+     * この書籍をお気に入りに登録したユーザー。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function favoritedByUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'favorites')
             ->withTimestamps();
     }
-    public function reviews()
+
+    /**
+     * この書籍のレビュー。
+     *
+     * book_usersを経由してreviewsテーブルにアクセスする。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasManyThrough
+     */
+    public function reviews(): HasManyThrough
     {
         return $this->hasManyThrough(
             Review::class,

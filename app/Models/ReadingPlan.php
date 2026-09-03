@@ -13,22 +13,42 @@ class ReadingPlan extends Model
 {
     use HasFactory;
 
+    /**
+     * 一括代入を許可する属性。
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
         'book_id',
         'target_date',
     ];
 
+    /**
+     * ネイティブな型へキャストする属性。
+     *
+     * @var array<string, string>
+     */
     protected $casts = [
         'target_date' => 'date:Y-m-d',
         'completed_at' => 'datetime',
         'status' => ReadingPlanStatus::class,
     ];
 
+    /**
+     * この読書計画を作成したユーザー。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * この読書計画が指す書籍。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function book(): BelongsTo
     {
         return $this->belongsTo(Book::class);
