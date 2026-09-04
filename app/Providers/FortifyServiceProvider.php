@@ -17,7 +17,6 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Contracts\RegisterResponse;
-use Laravel\Fortify\Http\Responses\RegisterResponse as FortifyRegisterResponse;
 use Illuminate\Auth\Events\Login;
 use Laravel\Fortify\Contracts\LogoutResponse;
 

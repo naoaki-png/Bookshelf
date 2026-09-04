@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Auth;
 use App\Models\Review;
 use App\Http\Requests\ReviewRequest;
@@ -43,10 +42,9 @@ class ReviewsController extends Controller
      * レビューの編集画面を表示する。
      *
      * @param  \App\Models\Review  $review
-     * @param  \App\Models\Book  $book
      * @return \Illuminate\View\View
      */
-    public function edit(Review $review, Book $book): View
+    public function edit(Review $review): View
     {
         $this->authorize('update', $review);
         $review->book = $review->bookUser->book;
