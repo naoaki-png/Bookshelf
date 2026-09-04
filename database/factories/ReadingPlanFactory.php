@@ -2,12 +2,14 @@
 
 namespace Database\Factories;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
-use App\Models\Book;
-use App\Models\User;
 use App\Enums\ReadingPlanStatus;
+use App\Models\Book;
+use App\Models\ReadingPlan;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ReadingPlan>
+ * @extends Factory<ReadingPlan>
  */
 class ReadingPlanFactory extends Factory
 {
@@ -26,26 +28,27 @@ class ReadingPlanFactory extends Factory
             'status' => ReadingPlanStatus::InProgress,
         ];
     }
+
     public function overdue(): static
     {
-        return $this->state(fn(array $attributes) => [
+        return $this->state(fn (array $attributes) => [
             'target_date' => fake()->dateTimeBetween('-3 day', '-1days'),
             'status' => ReadingPlanStatus::Overdue,
         ]);
     }
+
     public function completed(): static
     {
-        return $this->state(fn(array $attributes) => [
+        return $this->state(fn (array $attributes) => [
             'completed_at' => now(),
             'status' => ReadingPlanStatus::Completed,
         ]);
     }
+
     public function dueInDays(int $days): static
     {
-        return $this->state(fn(array $attributes) => [
+        return $this->state(fn (array $attributes) => [
             'target_date' => now()->addDays($days)->startOfDay(),
         ]);
     }
-
 }
-

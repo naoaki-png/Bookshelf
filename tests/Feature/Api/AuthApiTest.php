@@ -25,6 +25,7 @@ class AuthApiTest extends TestCase
     use RefreshDatabase;
 
     private const LOGIN = '/api/v1/login';
+
     private const LOGOUT = '/api/v1/logout';
 
     /**

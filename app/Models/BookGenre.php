@@ -39,7 +39,7 @@ class BookGenre extends Model
     /**
      * この行が指す書籍。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function book(): BelongsTo
     {
@@ -49,7 +49,7 @@ class BookGenre extends Model
     /**
      * この行が指すジャンル。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function genre(): BelongsTo
     {

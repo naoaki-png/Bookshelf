@@ -22,7 +22,7 @@ class Genre extends Model
     /**
      * このジャンルに属する書籍。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function books(): BelongsToMany
     {
