@@ -4,9 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BookShowResource;
-use Illuminate\Http\Request;
 use App\Models\Book;
-use App\Http\Resources\BookReviewResource;
 use App\Http\Requests\ApiBookIndexRequest;
 use App\Http\Resources\BookIndexResource;
 use App\Http\Requests\ApiBookRequest;
@@ -103,5 +101,4 @@ class ApiBookController extends Controller
         $book->delete();
         return response('', 204);
     }
-    //
 }
