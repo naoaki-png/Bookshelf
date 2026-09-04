@@ -15,7 +15,7 @@ class BookSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = User::first();
+        $users = User::all();
         $books = [
             ['no' => 1, 'title' => '吾輩は猫である', 'author' => '夏目漱石', 'isbn' => '9784101010014', 'published_date' => '1905-01-01', 'genres' => ['小説']],
             ['no' => 2, 'title' => '人を動かす', 'author' => 'D・カーネギー', 'isbn' => '9784422100524', 'published_date' => '1936-10-01', 'genres' => ['ビジネス, 自己啓発']],
@@ -29,7 +29,10 @@ class BookSeeder extends Seeder
             ['no' => 10, 'title' => 'FACTFULNESS', 'author' => 'ハンス・ロスリング', 'isbn' => '9784822289607', 'published_date' => '2019-01-11', 'genres' => ['ビジネス', '科学']],
             ['no' => 11, 'title' => 'コンテナ物語', 'author' => 'マルク・レビンソン', 'isbn' => '9784822251468', 'published_date' => '2007-01-18', 'genres' => ['ビジネス', '歴史']],
         ];
+
         foreach ($books as $data) {
+            $owner = $users->random();
+
             $book = Book::firstOrCreate(
                 ['isbn' => $data['isbn']],
                 [
@@ -38,16 +41,17 @@ class BookSeeder extends Seeder
                     'description' => fake()->realText(),
                     'published_date' => $data['published_date'],
                     'image_url' => "https://placehold.co/200x300/e2e8f0/475569?text={$data['no']}",
+                    'user_id' => $owner->id,
                 ]
             );
+
             $genreIds = Genre::whereIn('name', $data['genres'])->pluck('id');
             $book->genres()->sync($genreIds);
+
             BookUser::firstOrCreate([
-                'user_id' => $user->id,
+                'user_id' => $owner->id,
                 'book_id' => $book->id,
             ]);
         }
     }
-
-    //
 }
