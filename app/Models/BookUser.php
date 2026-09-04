@@ -4,11 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
-use App\Models\Book;
-use App\Models\Review;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BookUser extends Model
 {
@@ -52,18 +48,6 @@ class BookUser extends Model
     public function book(): BelongsTo
     {
         return $this->belongsTo(Book::class);
-    }
-
-    /**
-     * この行に紐づくレビュー。
-     *
-     * reviews.book_user_id がこの行を指しているため、1行につき複数のレビューを持つ。
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function review(): HasMany
-    {
-        return $this->hasMany(Review::class);
     }
 }
 

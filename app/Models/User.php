@@ -7,12 +7,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use App\Models\ReviewLike;
-use App\Models\Book;
-use App\Models\Review;
-use App\Models\BookUser;
-use App\Models\Favorite;
-use App\Models\ReadingPlan;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -60,17 +54,6 @@ class User extends Authenticatable
     public function bookUsers(): HasMany
     {
         return $this->hasMany(BookUser::class);
-    }
-
-    /**
-     * このユーザーが登録した書籍。
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
-     */
-    public function books(): BelongsToMany
-    {
-        return $this->belongsToMany(Book::class)
-            ->withTimestamps();
     }
 
     /**
