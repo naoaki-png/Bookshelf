@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
-use App\Models\User;
 use App\Models\Review;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 
 class ReviewLikeSeeder extends Seeder
 {
@@ -20,7 +19,7 @@ class ReviewLikeSeeder extends Seeder
         foreach ($reviews as $review) {
             $authorId = $review->bookUser->user_id;
 
-            $candidateUsers = $users->reject(fn($user) => $user->id === $authorId);
+            $candidateUsers = $users->reject(fn ($user) => $user->id === $authorId);
 
             $likeCount = rand(0, 3);
 

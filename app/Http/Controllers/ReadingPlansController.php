@@ -2,24 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Auth;
-use App\Models\Book;
-use App\Models\ReadingPlan;
-use Illuminate\View\View;
-use Illuminate\Http\RedirectResponse;
+use App\Enums\ReadingPlanStatus;
 use App\Http\Requests\StoreReadingPlanRequest;
 use App\Http\Requests\UpdateReadingPlanRequest;
-use App\Enums\ReadingPlanStatus;
+use App\Models\Book;
+use App\Models\ReadingPlan;
+use Auth;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 
 class ReadingPlansController extends Controller
 {
     /**
      * 読書計画の一覧を表示する。
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\View\View
+     * @param  Request  $request
+     * @return View
      */
     public function index(Request $request): View
     {
@@ -27,29 +27,32 @@ class ReadingPlansController extends Controller
 
         $readingPlans = Auth::user()->readingPlans()
             ->with('book')
-            ->when($currentStatus, fn($query) => $query->where('status', $currentStatus))
+            ->when($currentStatus, fn ($query) => $query->where('status', $currentStatus))
             ->orderBy('target_date')
             ->get();
 
         return view('reading-plans.index', compact('readingPlans', 'currentStatus'));
     }
+
     /**
      * 読書計画の新規作成画面を表示する。
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function create(): View
     {
         $books = Book::select('id', 'title', 'author')
             ->orderBy('title')
             ->get();
+
         return view('reading-plans.create', compact('books'));
     }
+
     /**
      * 読書計画を新規作成する。
      *
-     * @param  \App\Http\Requests\StoreReadingPlanRequest  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @param  StoreReadingPlanRequest  $request
+     * @return RedirectResponse
      */
     public function store(StoreReadingPlanRequest $request): RedirectResponse
     {
@@ -58,27 +61,32 @@ class ReadingPlansController extends Controller
             Auth::user()->readingPlans()->create($data);
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['user_id' => Auth::id()]);
+
             return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
         }
+
         return redirect(route('reading-plans.index'))->with('success', '読書計画を登録しました');
     }
+
     /**
      * 読書計画の編集画面を表示する。
      *
-     * @param  \App\Models\ReadingPlan  $plan
-     * @return \Illuminate\View\View
+     * @param  ReadingPlan  $plan
+     * @return View
      */
     public function edit(ReadingPlan $plan): View
     {
         $this->authorize('update', $plan);
+
         return view('reading-plans.edit', ['readingPlan' => $plan]);
     }
+
     /**
      * 読書計画を更新する。
      *
-     * @param  \App\Http\Requests\UpdateReadingPlanRequest  $request
-     * @param  \App\Models\ReadingPlan  $plan
-     * @return \Illuminate\Http\RedirectResponse
+     * @param  UpdateReadingPlanRequest  $request
+     * @param  ReadingPlan  $plan
+     * @return RedirectResponse
      */
     public function update(UpdateReadingPlanRequest $request, ReadingPlan $plan): RedirectResponse
     {
@@ -87,15 +95,18 @@ class ReadingPlansController extends Controller
             $plan->update($request->validated());
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['plan_id' => $plan->id, 'target_date' => $request->target_date]);
+
             return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
         }
+
         return redirect(route('reading-plans.index'))->with('success', '読書計画を更新しました');
     }
+
     /**
      * 読書計画を削除する。
      *
-     * @param  \App\Models\ReadingPlan  $plan
-     * @return \Illuminate\Http\RedirectResponse
+     * @param  ReadingPlan  $plan
+     * @return RedirectResponse
      */
     public function destroy(ReadingPlan $plan): RedirectResponse
     {
@@ -104,15 +115,18 @@ class ReadingPlansController extends Controller
             $plan->delete();
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['plan_id' => $plan->id]);
+
             return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
         }
+
         return redirect(route('reading-plans.index'))->with('success', '読書計画を削除しました');
     }
+
     /**
      * 読書計画を読了にする。
      *
-     * @param  \App\Models\ReadingPlan  $plan
-     * @return \Illuminate\Http\RedirectResponse
+     * @param  ReadingPlan  $plan
+     * @return RedirectResponse
      */
     public function complete(ReadingPlan $plan): RedirectResponse
     {
@@ -126,8 +140,10 @@ class ReadingPlansController extends Controller
             $plan->save();
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['plan_id' => $plan->id]);
+
             return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
         }
+
         return redirect(route('reading-plans.index'))->with('success', '読書計画を完了しました');
     }
 }

@@ -1,12 +1,13 @@
 <?php
-use App\Http\Controllers\FavoritesController;
-use App\Http\Controllers\RankingController;
+
 use App\Http\Controllers\BooksController;
+use App\Http\Controllers\FavoritesController;
 use App\Http\Controllers\GenresController;
-use App\Http\Controllers\ReviewsController;
-use App\Http\Controllers\ReportsController;
-use App\Http\Controllers\ReadingPlansController;
 use App\Http\Controllers\NotificationsController;
+use App\Http\Controllers\RankingController;
+use App\Http\Controllers\ReadingPlansController;
+use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\ReviewsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,7 +25,6 @@ Route::get('/books', [BooksController::class, 'index'])->name('books.index');
 Route::get('/books/create', [BooksController::class, 'create'])->name('books.create')->middleware('auth');
 Route::get('/ranking', [RankingController::class, 'index'])->name('ranking.index');
 Route::get('/books/{book}', [BooksController::class, 'show'])->name('books.show');
-
 
 Route::middleware(['auth'])->group(function () {
     Route::post('/books', [BooksController::class, 'store'])->name('books.store');

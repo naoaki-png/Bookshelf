@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Book extends Model
 {
     use HasFactory;
+
     /**
      * 一括代入を許可する属性。
      *
@@ -23,7 +24,7 @@ class Book extends Model
         'description',
         'published_date',
         'image_url',
-        'user_id'
+        'user_id',
     ];
 
     /**
@@ -38,7 +39,7 @@ class Book extends Model
     /**
      * この書籍とジャンルの紐付けを保持する中間テーブルの行。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function bookGenres(): HasMany
     {
@@ -48,7 +49,7 @@ class Book extends Model
     /**
      * この書籍に設定されたジャンル。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function genres(): BelongsToMany
     {
@@ -59,16 +60,17 @@ class Book extends Model
     /**
      * この書籍とユーザーの紐付けを保持する中間テーブルの行。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function bookUsers(): HasMany
     {
         return $this->hasMany(BookUser::class);
     }
+
     /**
      * この書籍にレビューを投稿したユーザー。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function users(): BelongsToMany
     {
@@ -79,7 +81,7 @@ class Book extends Model
     /**
      * この書籍に投稿されたお気に入り。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function favorites(): HasMany
     {
@@ -89,7 +91,7 @@ class Book extends Model
     /**
      * この書籍をお気に入りに登録したユーザー。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function favoritedByUsers(): BelongsToMany
     {
@@ -102,7 +104,7 @@ class Book extends Model
      *
      * book_usersを経由してreviewsテーブルにアクセスする。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasManyThrough
+     * @return HasManyThrough
      */
     public function reviews(): HasManyThrough
     {
@@ -115,5 +117,4 @@ class Book extends Model
             'id'
         );
     }
-
 }

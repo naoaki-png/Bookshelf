@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class BookRequest extends FormRequest
@@ -17,7 +18,7 @@ class BookRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -35,8 +36,10 @@ class BookRequest extends FormRequest
             $rules['isbn'] = ['nullable', 'digits:13', 'unique:books,isbn,' . $this->route('book')->id];
 
         }
+
         return $rules;
     }
+
     public function messages(): array
     {
         return [
@@ -58,5 +61,4 @@ class BookRequest extends FormRequest
             'genres.*.exists' => '選択されたジャンルは存在しません。',
         ];
     }
-
 }

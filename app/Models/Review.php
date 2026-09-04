@@ -5,9 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Review extends Model
 {
@@ -27,7 +27,7 @@ class Review extends Model
     /**
      * このレビューがどの book_users の行に属しているか。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function bookUser(): BelongsTo
     {
@@ -39,7 +39,7 @@ class Review extends Model
      *
      * BookUserを経由してusersテーブルにアクセスする。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOneThrough
+     * @return HasOneThrough
      */
     public function user(): HasOneThrough
     {
@@ -56,7 +56,7 @@ class Review extends Model
     /**
      * このレビューに付いたいいねの行の一覧。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function reviewLikes(): HasMany
     {
@@ -66,7 +66,7 @@ class Review extends Model
     /**
      * このレビューをいいねしたユーザー。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function likedByUsers(): BelongsToMany
     {
