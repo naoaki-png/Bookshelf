@@ -19,14 +19,15 @@ class ReviewSeeder extends Seeder
         $books = Book::all();
 
         $comments = [
-            5 => ['とても面白かったです。何度でも読み返したい一冊です。', '期待以上の内容で大満足でした。', '文句なしの傑作だと思います。'],
-            4 => ['読みやすく、学びの多い本でした。', 'とても良い内容でしたが、一部冗長に感じました。', 'おすすめできる一冊です。'],
-            3 => ['普通に読める内容でした。', '悪くはないですが、特別感動はしませんでした。', '合う人には合うと思います。'],
+            1 => '期待していた内容とは違いました。',
+            2 => 'もう少し具体的な説明がほしいと感じました。',
+            3 => '普通に読める内容でした。',
+            4 => '読みやすく、学びの多い本でした。',
+            5 => 'とても面白かったです。何度でも読み返したい一冊です。',
         ];
 
         foreach ($books as $book) {
             $reviewCount = rand(2, 4);
-
             $reviewers = $users->random($reviewCount);
 
             foreach ($reviewers as $user) {
@@ -35,13 +36,12 @@ class ReviewSeeder extends Seeder
                     'book_id' => $book->id,
                 ]);
 
-                $rating = rand(3, 5);
-                $comment = $comments[$rating][array_rand($comments[$rating])];
+                $rating = rand(1, 5);
 
                 Review::create([
                     'book_user_id' => $bookUser->id,
                     'rating' => $rating,
-                    'comment' => $comment,
+                    'comment' => $comments[$rating],
                 ]);
             }
         }
