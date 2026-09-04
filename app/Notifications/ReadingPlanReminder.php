@@ -2,20 +2,22 @@
 
 namespace App\Notifications;
 
+use App\Models\ReadingPlan;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
-use App\Models\ReadingPlan;
 
 class ReadingPlanReminder extends Notification
 {
     use Queueable;
+
     protected ReadingPlan $plan;
+
     protected string $timing;
 
     /**
      * Create a new notification instance.
      *
-     * @param  ReadingPlan  $plan    通知対象の読書計画
+     * @param  ReadingPlan  $plan  通知対象の読書計画
      * @param  string  $timing  通知の種別
      */
     public function __construct(ReadingPlan $plan, string $timing)

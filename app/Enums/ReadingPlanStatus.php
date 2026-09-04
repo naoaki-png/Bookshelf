@@ -2,12 +2,12 @@
 
 namespace App\Enums;
 
-
 enum ReadingPlanStatus: string
 {
     case InProgress = 'in_progress';
     case Completed = 'completed';
     case Overdue = 'overdue';
+
     public function label(): string
     {
         return match ($this) {
@@ -16,6 +16,7 @@ enum ReadingPlanStatus: string
             self::Overdue => '期日遅れ',
         };
     }
+
     public function badgeClass(): string
     {
         return match ($this) {

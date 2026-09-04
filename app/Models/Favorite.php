@@ -23,7 +23,7 @@ class Favorite extends Model
     /**
      * このお気に入りを登録したユーザー。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function user(): BelongsTo
     {
@@ -33,7 +33,7 @@ class Favorite extends Model
     /**
      * このお気に入りが指す書籍。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function book(): BelongsTo
     {
