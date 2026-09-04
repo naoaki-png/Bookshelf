@@ -195,4 +195,55 @@ class RankingTest extends TestCase
             ->assertSee('Dustin Boswell')
             ->assertSee('4.00');
     }
+
+    /**
+     * 前提: レビュー付き1冊 + レビュー0件が2冊
+     * 操作: GET /ranking
+     * 期待: レビュー付きの1冊だけが並ぶ
+     *
+     * withAvg は LEFT JOIN なので、レビューが無い本も
+     * reviews_avg_rating = null で付いてくる。orderByDesc で null は後ろに
+     * 回るが、対象が10冊に満たないときは画面に残り、round(null) で ★0、
+     * number_format(null, 2) で 0.00 と表示されてしまう。
+     * has('reviews') で母集団から外していることを固定する。
+     */
+    public function test_レビューが0件の書籍はランキングに出ない(): void
+    {
+        $reviewed = Book::factory()->create(['title' => 'レビューあり']);
+        Book::factory()->create(['title' => 'レビューなしA']);
+        Book::factory()->create(['title' => 'レビューなしB']);
+
+        $this->reviewFor(User::factory()->create(), $reviewed, 4);
+
+        $response = $this->get('/ranking')->assertOk();
+
+        $this->assertSame(['レビューあり'], $response->viewData('rankedBooks')->pluck('title')->all());
+        $response->assertDontSee('レビューなしA');
+        $response->assertDontSee('レビューなしB');
+        $response->assertDontSee('0.00');
+    }
+
+    /**
+     * 前提: 3人が別々にレビューを付けた書籍1冊
+     * 操作: GET /ranking
+     * 期待: reviews_count が 3、画面に「(3件のレビュー)」と出る
+     *
+     * ビューは $book->reviews_count を読んでいるが、コントローラが
+     * withCount('reviews') を呼び忘れると null になり、エラーを出さずに
+     * 「(件のレビュー)」と数字が欠けた状態で描画される。
+     * viewData だけでなく描画まで通して、列名とビューの読み先を一致させておく。
+     */
+    public function test_ランキングにレビュー件数が表示される(): void
+    {
+        $book = Book::factory()->create(['title' => 'レビュー3件の本']);
+
+        $this->reviewFor(User::factory()->create(), $book, 5);
+        $this->reviewFor(User::factory()->create(), $book, 4);
+        $this->reviewFor(User::factory()->create(), $book, 3);
+
+        $response = $this->get('/ranking')->assertOk();
+
+        $this->assertEquals(3, $response->viewData('rankedBooks')[0]->reviews_count);
+        $response->assertSee('(3件のレビュー)');
+    }
 }
