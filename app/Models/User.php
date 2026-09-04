@@ -4,12 +4,12 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class User extends Authenticatable
 {
@@ -49,7 +49,7 @@ class User extends Authenticatable
     /**
      * このユーザーと書籍の紐付けを保持する中間テーブルの行。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function bookUsers(): HasMany
     {
@@ -59,7 +59,7 @@ class User extends Authenticatable
     /**
      * このユーザーがいいねしたレビューの紐付けを保持する中間テーブルの行。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function reviewLikes(): HasMany
     {
@@ -71,7 +71,7 @@ class User extends Authenticatable
      *
      * BookUserを経由してreviewsテーブルにアクセスする。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasManyThrough
+     * @return HasManyThrough
      */
     public function reviews(): HasManyThrough
     {
@@ -88,7 +88,7 @@ class User extends Authenticatable
     /**
      * このユーザーがお気に入りに登録した書籍の紐付けを保持する中間テーブルの行。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function favorites(): HasMany
     {
@@ -98,7 +98,7 @@ class User extends Authenticatable
     /**
      * このユーザーがお気に入りに登録した書籍。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function favoriteBooks(): BelongsToMany
     {
@@ -109,7 +109,7 @@ class User extends Authenticatable
     /**
      * このユーザーがいいねしたレビュー。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function likedReviews(): BelongsToMany
     {
@@ -120,7 +120,7 @@ class User extends Authenticatable
     /**
      * このユーザーが作成した読書計画。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function readingPlans(): HasMany
     {

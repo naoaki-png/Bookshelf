@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\ReadingPlan;
 use App\Enums\ReadingPlanStatus;
-use Carbon\Carbon;
+use App\Models\ReadingPlan;
 use App\Notifications\ReadingPlanReminder;
+use Carbon\Carbon;
+use Illuminate\Console\Command;
 
 class SendReadingPlanReminders extends Command
 {

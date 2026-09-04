@@ -1,26 +1,28 @@
 <?php
 
 namespace App\Providers;
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Support\Facades\Event;
-use Laravel\Fortify\Contracts\CreatesNewUsers;
+
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Models\User;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
-use Laravel\Fortify\Fortify;
-use Laravel\Fortify\Contracts\RegisterResponse;
-use Illuminate\Auth\Events\Login;
+use Laravel\Fortify\Contracts\CreatesNewUsers;
 use Laravel\Fortify\Contracts\LogoutResponse;
+use Laravel\Fortify\Contracts\RegisterResponse;
+use Laravel\Fortify\Fortify;
 
-use Illuminate\Support\Facades\Hash;
 class FortifyServiceProvider extends ServiceProvider
 {
     /**
@@ -51,7 +53,7 @@ class FortifyServiceProvider extends ServiceProvider
             if ($user && Hash::check($request->password, $user->password)) {
                 return $user;
             }
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'email' => ['メールアドレスまたはパスワードが間違っています。'],
             ]);
         });
@@ -62,7 +64,8 @@ class FortifyServiceProvider extends ServiceProvider
             session()->flash('success', 'ログインしました');
         });
         $this->app->singleton(RegisterResponse::class, function () {
-            return new class implements RegisterResponse {
+            return new class implements RegisterResponse
+            {
                 public function toResponse($request)
                 {
                     return redirect('/books');
@@ -91,7 +94,8 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::loginView(function () {
             return view('auth.login');
         });
-        $this->app->instance(LogoutResponse::class, new class implements LogoutResponse {
+        $this->app->instance(LogoutResponse::class, new class implements LogoutResponse
+        {
             public function toResponse($request)
             {
                 return redirect('/login');
@@ -99,4 +103,3 @@ class FortifyServiceProvider extends ServiceProvider
         });
     }
 }
-

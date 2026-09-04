@@ -13,7 +13,7 @@ class ReportsController extends Controller
      * 自分が投稿したレビューを1回だけ取得し、
      * サマリー・評価分布・高評価の書籍・ジャンル別評価の4つに集計する。
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function index(): View
     {
@@ -29,10 +29,11 @@ class ReportsController extends Controller
                 'books_read' => $reviews->pluck('bookUser.book_id')->unique()->count(),
                 'average_rating' => $reviews->avg('rating') ?? 0,
             ],
-            'rating_distribution' => collect(range(1, 5))->map(fn($star) => $reviews->where('rating', $star)->count()),
+            'rating_distribution' => collect(range(1, 5))->map(fn ($star) => $reviews->where('rating', $star)->count()),
             // 仕様: 4星以上を対象に、評価の高い順で上位5件。[id, title, author, rating] の配列で返す。
             'top_rated_books' => $reviews->where('rating', '>=', 4)->groupBy('bookUser.book_id')->map(function ($group) {
                 $book = $group->first()->bookUser->book;
+
                 return [
                     'id' => $book->id,
                     'title' => $book->title,

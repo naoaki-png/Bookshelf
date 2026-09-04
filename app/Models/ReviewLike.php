@@ -33,7 +33,7 @@ class ReviewLike extends Model
     /**
      * このレビューいいねが指すユーザー。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function user(): BelongsTo
     {
@@ -43,7 +43,7 @@ class ReviewLike extends Model
     /**
      * このレビューいいねが指すレビュー。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function review(): BelongsTo
     {

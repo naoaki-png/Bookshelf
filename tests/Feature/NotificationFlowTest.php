@@ -7,6 +7,7 @@ use App\Models\ReadingPlan;
 use App\Models\User;
 use App\Notifications\ReadingPlanReminder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\DatabaseNotification;
 use Tests\TestCase;
 
 /**
@@ -77,7 +78,7 @@ class NotificationFlowTest extends TestCase
         $notifications = $this->actingAs($user)->get('/notifications')->assertOk()->viewData('notifications');
 
         $this->assertCount(2, $notifications);
-        $this->assertSame(3, \Illuminate\Notifications\DatabaseNotification::count());
+        $this->assertSame(3, DatabaseNotification::count());
     }
 
     /**
@@ -111,9 +112,9 @@ class NotificationFlowTest extends TestCase
         $this->notify($user);
         $this->notify($user);
 
-        $ids = \Illuminate\Notifications\DatabaseNotification::orderBy('id')->pluck('id');
+        $ids = DatabaseNotification::orderBy('id')->pluck('id');
         foreach ($ids as $i => $id) {
-            \Illuminate\Notifications\DatabaseNotification::where('id', $id)
+            DatabaseNotification::where('id', $id)
                 ->update(['created_at' => now()->subDays(3 - $i)]);
         }
 

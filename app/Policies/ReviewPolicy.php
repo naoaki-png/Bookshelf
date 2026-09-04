@@ -29,7 +29,6 @@ class ReviewPolicy
     public function create(User $user, Review $review): bool
     {
 
-
         //
     }
 

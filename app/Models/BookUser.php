@@ -33,7 +33,7 @@ class BookUser extends Model
     /**
      * この行が指すユーザー。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function user(): BelongsTo
     {
@@ -43,11 +43,10 @@ class BookUser extends Model
     /**
      * この行が指す書籍。
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function book(): BelongsTo
     {
         return $this->belongsTo(Book::class);
     }
 }
-
