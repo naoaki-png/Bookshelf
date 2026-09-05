@@ -25,10 +25,8 @@ class ApiBookIndexRequest extends FormRequest
         return [
             'genre' => ['nullable', 'string', 'exists:genres,name'],
             'keyword' => ['nullable', 'string', 'max:255'],
-            'sort' => ['nullable', 'string', 'in:latest,rating,reviews_count'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-            //
         ];
     }
 }
