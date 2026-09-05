@@ -45,7 +45,7 @@ git clone https://github.com/naoaki-png/Bookshelf.git
 
 ### 2. 依存パッケージのインストール
 
-プロジェクト作成後、`Bookshelf` ディレクトリに移動し、依存パッケージをインストールします。
+プロジェクトクローン後、`Bookshelf` ディレクトリに移動し、依存パッケージをインストールします。
 
 #### プロジェクトディレクトリに移動
 
@@ -58,9 +58,6 @@ cd Bookshelf
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/var/www/html" -w /var/www/html -e COMPOSER_CACHE_DIR=/tmp/composer_cache laravelsail/php82-composer:latest composer install
 ```
-
-※M1/M2/M3 Mac（Apple Silicon）をお使いの方：
-`sail up -d` 実行時に `no matching manifest for linux/arm64/v8` エラーが発生した場合、`compose.yaml` の `mysql` サービスに `platform: 'linux/amd64'` を追加してください。
 
 ### 3. .envファイルの準備
 
@@ -98,6 +95,14 @@ Books API を有効化して発行します。
 #### エイリアスの設定
 
 1. 毎回 `./vendor/bin/sail` と入力する手間を省くため、`sail` だけで実行できるようにエイリアスを設定します。
+
+**Bash（WSL2 / Linux）の場合:**
+
+```bash
+echo "alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'" >> ~/.bashrc
+```
+
+**Zsh（macOS の既定）の場合:**
 
 ```bash
 echo "alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'" >> ~/.zshrc
@@ -211,10 +216,11 @@ sail artisan reading-plans:remind --date=2026-09-10
 - 書籍登録・更新・削除・検索
 - 書籍詳細・レビュー評価（登録・更新・削除）・レビューに対していいね機能
 - 読書計画登録・更新・削除
-- ジャンル管理登録・更新削除
+- ジャンル管理登録・更新・削除
 - ランキング表示
 - 書籍お気に入り登録・削除
 - マイレポート表示
+- 読書計画のリマインダー通知（期日3日前・当日・3日後）
 
 ## APIエンドポイント一覧
 
