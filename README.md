@@ -1,66 +1,229 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# COACHTECH Bookshelf 書籍レビューアプリ
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## 概要
 
-## About Laravel
+書籍レビューアプリケーション「BookShelf」です。
+ユーザーは書籍を登録・閲覧し、レビューの投稿やお気に入り登録ができます。ジャンルによる分類やレビューへのいいね機能、平均評価に基づくランキング機能も備えています。外部アプリケーション向けの公開API（JSON）も提供します。
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 作成者
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+杉本有聡
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 使用技術
 
-## Learning Laravel
+- PHP 8.5
+- Laravel 10.50.2
+- MySQL 8.4
+- Docker / Docker Compose / Laravel Sail
+- Vite / Tailwind CSS 3.4
+- Laravel Fortify（認証）
+- Sanctum 3.3
+- phpMyAdmin
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## ER図
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+![ER図](docs/er-diagram.png)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 開発環境URL
 
-## Laravel Sponsors
+http://localhost/books
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 動作環境
 
-### Premium Partners
+- Docker
+- Docker Compose
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+※ Windowsの場合はWSL2の利用を推奨します。
 
-## Contributing
+## 環境構築手順
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 1. リポジトリをクローン
 
-## Code of Conduct
+```bash
+git clone https://github.com/naoaki-png/Bookshelf.git
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 2. 依存パッケージのインストール
 
-## Security Vulnerabilities
+クローン後、`Bookshelf` ディレクトリに移動し、依存パッケージをインストールします。
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+#### プロジェクトディレクトリに移動
 
-## License
+```bash
+cd Bookshelf
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+#### 依存パッケージをインストール
+
+```bash
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/var/www/html" -w /var/www/html -e COMPOSER_CACHE_DIR=/tmp/composer_cache laravelsail/php82-composer:latest composer install
+```
+
+### 3. .envファイルの準備
+
+`.env.example` をコピーして `.env` を作成します。
+
+```bash
+cp .env.example .env
+```
+
+#### Google Books API キーの設定
+
+書籍登録画面の **ISBN検索**は Google Books API を利用します。
+`.env` の `GOOGLE_BOOKS_API_KEY` に API キーを設定してください。
+
+```
+GOOGLE_BOOKS_API_KEY=取得したAPIキー
+```
+
+キーは [Google Cloud Console](https://console.cloud.google.com/) で
+Books API を有効化して発行します。
+
+> [!NOTE]
+> キーが未設定の場合、ISBN検索は「書籍情報の取得に失敗しました。」となります。
+> **ISBN検索以外の機能（書籍の手動登録・レビュー・読書計画など）は
+> キーが無くても動作します。**
+
+### 4. Laravel Sailの起動
+
+#### Sailコンテナの起動
+
+```bash
+./vendor/bin/sail up -d
+```
+
+#### エイリアスの設定
+
+1. 毎回 `./vendor/bin/sail` と入力する手間を省くため、`sail` だけで実行できるようにエイリアスを設定します。
+
+**Bash（WSL2 / Linux）の場合:**
+
+```bash
+echo "alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'" >> ~/.bashrc
+```
+
+**Zsh（macOS の既定）の場合:**
+
+```bash
+echo "alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'" >> ~/.zshrc
+```
+
+2. シェルを再起動するか、新しいターミナルを開いてエイリアスを有効にする
+
+```bash
+exec $SHELL
+```
+
+### 5. NPM依存パッケージのインストール
+
+```bash
+sail npm install
+```
+
+### 6. アプリケーションキーの生成
+
+```bash
+sail artisan key:generate
+```
+
+### 7. データベースのマイグレーションと初期データ投入
+
+以下のコマンドでテーブルを作成し、ダミーデータを投入します。
+
+```bash
+sail artisan migrate:fresh --seed
+```
+
+※コンテナ内にデータが残っており、エラーが生じているケースなどがあります。 その場合は、以下のコマンドを順に実行して各コンテナを再起動して下さい。
+
+```bash
+sail down -v
+sail up -d
+sail artisan migrate:fresh --seed
+```
+
+初期データは以下の順で投入されます（`DatabaseSeeder`）。
+
+```
+User → Genre → Book → ReadingPlan → Review → Favorite → ReviewLike
+```
+
+外部キーの依存関係があるため、この順序で実行する必要があります。
+最後に通知バッチ（`reading-plans:remind`）が実行されます。
+
+### 8. Vite開発サーバーの起動
+
+```bash
+sail npm run dev
+```
+
+### 9. アプリケーションへのアクセス
+
+ブラウザで[http://localhost/books](http://localhost/books)にアクセスします。
+
+### 10. ログイン
+
+初期データに以下のユーザーが登録されています。
+
+| 名前     | メールアドレス        | パスワード |
+| :------- | :-------------------- | :--------- |
+| 山田太郎 | yamada@example.com    | password   |
+| 鈴木花子 | suzuki@example.com    | password   |
+| 田中一郎 | tanaka@example.com    | password   |
+| 佐藤美咲 | sato@example.com      | password   |
+| 高橋健太 | takahashi@example.com | password   |
+
+> [!TIP]
+> **読書計画と通知は 山田・鈴木・田中 の3名にのみ登録されています。**
+> 動作確認は `yamada@example.com` が分かりやすいです。
+
+## テスト実行
+
+```bash
+sail artisan test
+```
+
+## 通知機能について
+
+読書計画のリマインダー通知は、期日の3日前・当日・3日後に送信されます。
+本来は日次バッチ（`app/Console/Kernel.php`）で自動実行されますが、
+**Sail のコンテナには cron が入っていないためスケジュールは動作しません。**
+
+そのため `migrate:fresh --seed` の最後で通知バッチを1回実行し、
+初期データとして通知が作られるようにしています。
+
+手動で再実行する場合:
+
+```bash
+sail artisan reading-plans:remind
+```
+
+基準日を変えて動作を確認することもできます:
+
+```bash
+sail artisan reading-plans:remind --date=2026-09-10
+```
+
+## 機能一覧
+
+- ユーザー認証（登録、ログイン、ログアウト）
+- 書籍登録・更新・削除・検索
+- 書籍詳細・レビュー評価（登録・更新・削除）・レビューに対していいね機能
+- 読書計画登録・更新・削除
+- ジャンル管理登録・更新・削除
+- ランキング表示
+- 書籍お気に入り登録・削除
+- マイレポート表示
+- 読書計画のリマインダー通知（期日3日前・当日・3日後）
+
+## APIエンドポイント一覧
+
+| HTTPメソッド | URI                  | 概要                                                                           |
+| :----------- | :------------------- | :----------------------------------------------------------------------------- |
+| GET          | /api/v1/books        | 書籍一覧 (検索・ページネーション付き)                                          |
+| GET          | /api/v1/books/{book} | 書籍詳細                                                                       |
+| POST         | /api/v1/books        | 書籍の新規登録（Sanctum）                                                      |
+| PUT          | /api/v1/books/{book} | 書籍更新（Sanctum + BookPolicy（所有者のみ））                                 |
+| DELETE       | /api/v1/books/{book} | 書籍削除（Sanctum + BookPolicy（所有者のみ））                                 |
+| POST         | /api/v1/login        | ログイン。メールアドレスとパスワードで認証し、アクセストークン（Bearer）を発行 |
+| POST         | /api/v1/logout       | ログアウト。使用中のアクセストークンを失効（Sanctum）                          |
