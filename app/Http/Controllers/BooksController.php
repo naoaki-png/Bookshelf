@@ -29,33 +29,14 @@ class BooksController extends Controller
     public function index(BookIndexRequest $request): View
     {
         $genres = Genre::all();
-        $books = Book::withAvg('reviews', 'rating')->with('genres');
 
-        $keyword = $request->input('keyword');
-        if ($keyword) {
-            $books->where(function ($q) use ($keyword) {
-                $q->where('title', 'like', '%' . $keyword . '%')
-                    ->orWhere('author', 'like', '%' . $keyword . '%');
-            });
-        }
-
-        $genreId = $request->input('genre');
-        if ($genreId) {
-            $books->whereHas('genres', function ($query) use ($genreId) {
-                $query->where('genres.id', $genreId);
-            });
-        }
-        $sort = $request->input('sort') ?? 'newest';
-        if ($sort === 'newest') {
-            $books->orderByDesc('created_at')->orderByDesc('id');
-        } elseif ($sort === 'oldest') {
-            $books->orderBy('created_at')->orderBy('id');
-        } elseif ($sort === 'rating') {
-            $books->orderByDesc('reviews_avg_rating');
-        } elseif ($sort === 'title') {
-            $books->orderBy('title');
-        }
-        $books = $books->paginate(10)->withQueryString();
+        $books = Book::withAvg('reviews', 'rating')
+            ->with('genres')
+            ->keyword($request->input('keyword'))
+            ->ofGenre($request->input('genre'))
+            ->sorted($request->input('sort'))
+            ->paginate(10)
+            ->withQueryString();
 
         return view('books.index', compact('books', 'genres'));
     }
