@@ -45,7 +45,7 @@ git clone https://github.com/naoaki-png/Bookshelf.git
 
 ### 2. 依存パッケージのインストール
 
-プロジェクトクローン後、`Bookshelf` ディレクトリに移動し、依存パッケージをインストールします。
+クローン後、`Bookshelf` ディレクトリに移動し、依存パッケージをインストールします。
 
 #### プロジェクトディレクトリに移動
 
@@ -138,13 +138,7 @@ sail artisan migrate:fresh --seed
 
 ```bash
 sail down -v
-```
-
-```bash
 sail up -d
-```
-
-```bash
 sail artisan migrate:fresh --seed
 ```
 
