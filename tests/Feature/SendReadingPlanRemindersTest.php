@@ -19,7 +19,7 @@ use Tests\TestCase;
  * このコマンドは2種類の仕事をする。
  *
  *   1. 通知を送る    期日の3日前 / 当日 / 3日後 の計画に、それぞれ1通ずつ
- *   2. 状態を更新する 期日を過ぎた未完了の計画を Overdue にする
+ *   2. 状態を更新する 期日を過ぎた未完了の計画を Expired にする
  *
  * テストの土台は --date オプションにある。
  * バッチが内部で today() を呼んでいると、テストは実行した日によって
@@ -99,7 +99,7 @@ class SendReadingPlanRemindersTest extends TestCase
     {
         $this->plan('2026-09-04');
         $this->plan('2026-09-01');
-        $this->plan('2026-08-29', ReadingPlanStatus::Overdue);
+        $this->plan('2026-08-29', ReadingPlanStatus::Expired);
 
         $this->runBatch();
 
@@ -145,17 +145,17 @@ class SendReadingPlanRemindersTest extends TestCase
     }
 
     /**
-     * 前提: 期日が3日前で、すでに Overdue になっている計画1件
+     * 前提: 期日が3日前で、すでに Expired になっている計画1件
      * 期待: three_days_after の通知が届く
      *
      * ★ このテストが、抽出条件を where('status', InProgress) にできない理由そのもの。
-     * 3日後通知の対象は、前日までのバッチで必ず Overdue に変わっている。
+     * 3日後通知の対象は、前日までのバッチで必ず Expired に変わっている。
      * 進行中だけに絞ると、3通目が1件も飛ばなくなる。
      * 条件が「完了していないもの」でなければならない、という設計判断を固定する。
      */
     public function test_期日を過ぎた計画にも3日後の通知が届く(): void
     {
-        $this->plan('2026-08-29', ReadingPlanStatus::Overdue);
+        $this->plan('2026-08-29', ReadingPlanStatus::Expired);
 
         $this->runBatch();
 
@@ -228,34 +228,34 @@ class SendReadingPlanRemindersTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Overdue への更新
+    // Expired への更新
     // ------------------------------------------------------------------
 
     /**
      * 前提: 期日が前日 / 3日前 の未完了の計画
-     * 期待: どちらも Overdue になる
+     * 期待: どちらも Expired になる
      *
-     * 「期日の翌日から Overdue」なので、前日が境界の内側にある。
+     * 「期日の翌日から Expired」なので、前日が境界の内側にある。
      * 3日前も一緒に見ているのは、条件が範囲(<)であることの確認。
      * 特定の1日だけを拾う書き方だと、バッチが落ちた日の計画が
-     * 永久に Overdue にならなくなる。
+     * 永久に Expired にならなくなる。
      */
-    public function test_期日を過ぎた未完了の計画はOverdueになる(): void
+    public function test_期日を過ぎた未完了の計画はExpiredになる(): void
     {
         $yesterday = $this->plan('2026-08-31');
         $threeDaysAgo = $this->plan('2026-08-29');
 
         $this->runBatch();
 
-        $this->assertSame(ReadingPlanStatus::Overdue, $yesterday->refresh()->status);
-        $this->assertSame(ReadingPlanStatus::Overdue, $threeDaysAgo->refresh()->status);
+        $this->assertSame(ReadingPlanStatus::Expired, $yesterday->refresh()->status);
+        $this->assertSame(ReadingPlanStatus::Expired, $threeDaysAgo->refresh()->status);
     }
 
     /**
      * 前提: 期日が当日の未完了の計画
      * 期待: 進行中のまま
      *
-     * ★ 境界。Overdue は「期日の翌日から」であって当日ではない。
+     * ★ 境界。Expired は「期日の翌日から」であって当日ではない。
      * ここが1日ずれると、期日当日に「期日遅れ」バッジが出る。
      *
      * 実装が where('target_date', '<', $date) に Carbon をそのまま渡すと、
@@ -263,7 +263,7 @@ class SendReadingPlanRemindersTest extends TestCase
      * (前半が同じで短いほうが小さいと判定されるため)このテストが落ちる。
      * 日付を文字列で渡していることを守る番人でもある。
      */
-    public function test_期日当日の計画はOverdueにならない(): void
+    public function test_期日当日の計画はExpiredにならない(): void
     {
         $today = $this->plan('2026-09-01');
 
@@ -276,7 +276,7 @@ class SendReadingPlanRemindersTest extends TestCase
      * 前提: 期日が未来の計画
      * 期待: 進行中のまま
      */
-    public function test_期日が未来の計画はOverdueにならない(): void
+    public function test_期日が未来の計画はExpiredにならない(): void
     {
         $future = $this->plan('2026-09-04');
 
@@ -293,7 +293,7 @@ class SendReadingPlanRemindersTest extends TestCase
      * completed_at まで見ているのは、status だけ守られて
      * 日時が現在時刻で上書きされる書き方があり得るため。
      */
-    public function test_完了済みの計画はOverdueにならない(): void
+    public function test_完了済みの計画はExpiredにならない(): void
     {
         $completedAt = Carbon::parse('2026-08-22 10:00:00');
         $plan = $this->plan('2026-08-29', ReadingPlanStatus::Completed);
@@ -307,22 +307,22 @@ class SendReadingPlanRemindersTest extends TestCase
     }
 
     /**
-     * 前提: すでに Overdue の計画
-     * 期待: Overdue のまま(実行しても壊れない)
+     * 前提: すでに Expired の計画
+     * 期待: Expired のまま(実行しても壊れない)
      *
      * 状態の更新は「毎日、条件に合うものを全部拾う」形なので、
-     * すでに Overdue のものも毎晩もう一度更新対象に入る。
+     * すでに Expired のものも毎晩もう一度更新対象に入る。
      * 何度実行しても同じ状態に落ち着くことを確認する。
      * 通知と違い、状態の更新のほうは繰り返しても安全である、という対比。
      */
-    public function test_すでにOverdueの計画を再度実行しても壊れない(): void
+    public function test_すでにExpiredの計画を再度実行しても壊れない(): void
     {
-        $plan = $this->plan('2026-08-31', ReadingPlanStatus::Overdue);
+        $plan = $this->plan('2026-08-31', ReadingPlanStatus::Expired);
 
         $this->runBatch();
         $this->runBatch();
 
-        $this->assertSame(ReadingPlanStatus::Overdue, $plan->refresh()->status);
+        $this->assertSame(ReadingPlanStatus::Expired, $plan->refresh()->status);
     }
 
     // ------------------------------------------------------------------
@@ -458,10 +458,10 @@ class SendReadingPlanRemindersTest extends TestCase
     // ------------------------------------------------------------------
 
     /**
-     * 期待: 毎日23時(日本時間)に、引数なしで実行される予定が登録されている
+     * 期待: 毎日20時(日本時間)に、引数なしで実行される予定が登録されている
      *
      * app.timezone は UTC なので、timezone('Asia/Tokyo') が無いと
-     * 23:00 UTC = 翌朝8時(日本時間)に動く。「毎晩」ではなくなる。
+     * 20:00 UTC = 翌朝5時(日本時間)に動く。「毎晩」ではなくなる。
      *
      * また、予定に渡すコマンドは引数なしでなければならない。
      * $signature の {--date=} は「受け取れる」という宣言であって値ではないので、
@@ -473,7 +473,7 @@ class SendReadingPlanRemindersTest extends TestCase
      * :memory: の SQLite が新しいプロセスからは空に見えるため。
      * 予定の登録内容までをここで確認し、通し実行は手で schedule:run を打つ。
      */
-    public function test_毎晩23時に引数なしで実行される予定が登録されている(): void
+    public function test_毎晩20時に引数なしで実行される予定が登録されている(): void
     {
         $this->artisan('schedule:list')->run();
         $events = $this->app->make(Schedule::class)->events();
@@ -482,11 +482,11 @@ class SendReadingPlanRemindersTest extends TestCase
             fn ($e) => str_contains($e->command, 'reading-plans:remind')
         );
 
-        $this->assertSame('0 23 * * *', $event->expression);
+        $this->assertSame('0 20 * * *', $event->expression);
         $this->assertSame('Asia/Tokyo', $event->timezone);
         $this->assertStringNotContainsString('--date', $event->command);
 
-        $this->travelTo(Carbon::parse('2026-09-01 14:00:00', 'UTC')); // 23:00 JST
+        $this->travelTo(Carbon::parse('2026-09-01 11:00:00', 'UTC')); // 20:00 JST
         $this->assertTrue($event->isDue($this->app));
 
         $this->travelTo(Carbon::parse('2026-09-01 22:00:00', 'UTC')); // 翌07:00 JST
@@ -514,7 +514,7 @@ class SendReadingPlanRemindersTest extends TestCase
      * メンターへの確認事項として持ち越している。
      *
      * 状態の更新のほうは何度実行しても同じ結果になる
-     * (test_すでにOverdueの計画を再度実行しても壊れない)。
+     * (test_すでにExpiredの計画を再度実行しても壊れない)。
      * 同じバッチの中で、繰り返しに強い処理と弱い処理が同居している。
      */
     public function test_同じ日に2回実行すると通知が重複する_既知の制約(): void

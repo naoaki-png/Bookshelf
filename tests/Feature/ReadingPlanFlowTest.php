@@ -120,7 +120,7 @@ class ReadingPlanFlowTest extends TestCase
             'status' => ReadingPlanStatus::Completed,
             'completed_at' => now(),
         ]);
-        $this->planFor($user, ['status' => ReadingPlanStatus::Overdue]);
+        $this->planFor($user, ['status' => ReadingPlanStatus::Expired]);
 
         $response = $this->actingAs($user)->get('/reading-plans?status=completed')->assertOk();
 
@@ -145,7 +145,7 @@ class ReadingPlanFlowTest extends TestCase
 
         $this->planFor($user);
         $this->planFor($user, ['status' => ReadingPlanStatus::Completed, 'completed_at' => now()]);
-        $this->planFor($user, ['status' => ReadingPlanStatus::Overdue]);
+        $this->planFor($user, ['status' => ReadingPlanStatus::Expired]);
 
         $response = $this->actingAs($user)->get('/reading-plans')->assertOk();
 
@@ -168,13 +168,13 @@ class ReadingPlanFlowTest extends TestCase
 
         $this->planFor($user);
         $this->planFor($user, ['status' => ReadingPlanStatus::Completed, 'completed_at' => now()]);
-        $this->planFor($user, ['status' => ReadingPlanStatus::Overdue]);
+        $this->planFor($user, ['status' => ReadingPlanStatus::Expired]);
 
         $this->actingAs($user)->get('/reading-plans')
             ->assertOk()
             ->assertSee('進行中')
             ->assertSee('完了')
-            ->assertSee('期日遅れ');
+            ->assertSee('期限切れ');
     }
 
     /**
@@ -563,14 +563,14 @@ class ReadingPlanFlowTest extends TestCase
      * 操作: POST /reading-plans/{id}/complete
      * 期待: 読了にできる
      *
-     * 判定は「Completed かどうか」だけなので、Overdue からも完了へ進める。
+     * 判定は「Completed かどうか」だけなので, Expired からも完了へ進める。
      * ここを「InProgress のときだけ」に変えると、期日を過ぎた本を
      * 読み終えても完了にできなくなる。仕様として固定しておく。
      */
     public function test_期日遅れの読書計画も読了にできる(): void
     {
         $user = User::factory()->create();
-        $plan = $this->planFor($user, ['status' => ReadingPlanStatus::Overdue]);
+        $plan = $this->planFor($user, ['status' => ReadingPlanStatus::Expired]);
 
         $this->actingAs($user)
             ->post('/reading-plans/' . $plan->id . '/complete')

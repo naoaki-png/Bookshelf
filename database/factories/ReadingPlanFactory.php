@@ -29,11 +29,11 @@ class ReadingPlanFactory extends Factory
         ];
     }
 
-    public function overdue(): static
+    public function expired(): static
     {
         return $this->state(fn (array $attributes) => [
             'target_date' => fake()->dateTimeBetween('-3 day', '-1days'),
-            'status' => ReadingPlanStatus::Overdue,
+            'status' => ReadingPlanStatus::Expired,
         ]);
     }
 
