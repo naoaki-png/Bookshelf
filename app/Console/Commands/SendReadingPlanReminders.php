@@ -47,7 +47,7 @@ class SendReadingPlanReminders extends Command
         foreach ($after as $plan) {
             $plan->user->notify(new ReadingPlanReminder($plan, 'three_days_after'));
         }
-        ReadingPlan::where('target_date', '<', $date->format('Y-m-d'))->where('status', '!=', ReadingPlanStatus::Completed)->update(['status' => ReadingPlanStatus::Overdue]);
+        ReadingPlan::where('target_date', '<', $date->format('Y-m-d'))->where('status', '!=', ReadingPlanStatus::Completed)->update(['status' => ReadingPlanStatus::Expired]);
 
         return Command::SUCCESS;
     }
