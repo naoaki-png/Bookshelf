@@ -29,7 +29,7 @@ class ReadingPlanSeeder extends Seeder
         $inProgressOffsets = [0, 1, 2, 3, 4];
 
         // 期日からの経過日数。-3 で通知が発火し、-1 / -2 / -4 では発火しない。
-        $overdueOffsets = [-1, -2, -3, -4];
+        $expiredOffsets = [-1, -2, -3, -4];
 
         // 完了済み。通知の対象外。
         $completedOffsets = [-10, -20];
@@ -62,14 +62,14 @@ class ReadingPlanSeeder extends Seeder
                     ]);
             }
 
-            foreach ($overdueOffsets as $offset) {
+            foreach ($expiredOffsets as $offset) {
                 ReadingPlan::factory()
                     ->for($user)
                     ->for($books[$index++])
                     ->create([
                         'target_date' => $today->copy()->addDays($offset),
                         'completed_at' => null,
-                        'status' => ReadingPlanStatus::Overdue,
+                        'status' => ReadingPlanStatus::Expired,
                     ]);
             }
 
