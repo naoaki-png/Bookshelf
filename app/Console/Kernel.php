@@ -12,7 +12,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('reading-plans:remind')->dailyAt('23:00')->timezone('Asia/Tokyo');
+        $schedule->command('reading-plans:remind')->dailyAt('20:00')->timezone('Asia/Tokyo');
     }
 
     /**
