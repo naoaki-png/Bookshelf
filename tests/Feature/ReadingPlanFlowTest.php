@@ -8,6 +8,7 @@ use App\Models\ReadingPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -24,8 +25,10 @@ use Tests\TestCase;
  *
  * 1. 他人の計画に触れないこと。
  *    edit / update / destroy / complete は $this->authorize() を通す。
- *    ReadingPlanPolicy は user_id の一致だけを見ているので、
- *    「他人の id を URL に直打ちしたら 403」を各メソッドで固定する。
+ *    ReadingPlanPolicy の delete / complete は user_id の一致だけを見るが、
+ *    update だけは「所有者 かつ 完了済みでない」の2条件になっている(#83)。
+ *    「他人の id を URL に直打ちしたら 403」を各メソッドで固定しつつ、
+ *    update では「自分の計画でも完了済みなら 403」も併せて固定する。
  *    ルートが /reading-plans/{plan} で id が丸見えなので、実際に起こりうる。
  *
  * 2. index は Auth::user()->readingPlans() から始まる。
@@ -240,7 +243,7 @@ class ReadingPlanFlowTest extends TestCase
         $this->actingAs($user)
             ->post('/reading-plans', ['book_id' => $book->id, 'target_date' => $target])
             ->assertRedirect(route('reading-plans.index'))
-            ->assertSessionHas('success', '読書計画を登録しました');
+            ->assertSessionHas('success', '読書計画を登録しました。');
 
         $this->assertDatabaseHas('reading_plans', [
             'user_id' => $user->id,
@@ -430,6 +433,46 @@ class ReadingPlanFlowTest extends TestCase
         $this->actingAs($user)->get('/reading-plans/' . $plan->id . '/edit')->assertForbidden();
     }
 
+    /**
+     * 前提: 完了済みの自分の計画1件
+     * 操作: GET /reading-plans/{id}/edit
+     * 期待: 403
+     *
+     * 所有者であっても、完了済みの計画は編集画面を開けない。
+     * 判定を持っているのは ReadingPlanPolicy::update() で、edit と update の
+     * 両方が同じ ability を通る。ここは「画面側の入口」が塞がっていることを固定する。
+     */
+    public function test_完了済みの読書計画の編集画面は開けない(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->planFor($user, [
+            'status' => ReadingPlanStatus::Completed,
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($user)->get('/reading-plans/' . $plan->id . '/edit')->assertForbidden();
+    }
+
+    /**
+     * 前提: 期限切れの自分の計画1件
+     * 操作: GET /reading-plans/{id}/edit
+     * 期待: 200
+     *
+     * 塞ぐ対象は Completed だけ。Expired まで巻き込むと期日を直せなくなり、
+     * 期限切れを進行中へ戻す導線そのものが消える。
+     * Policy の条件を「InProgress のときだけ true」と書き間違えた瞬間にここが落ちる。
+     */
+    public function test_期限切れの読書計画の編集画面は開ける(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->planFor($user, [
+            'status' => ReadingPlanStatus::Expired,
+            'target_date' => now()->subDays(3)->toDateString(),
+        ]);
+
+        $this->actingAs($user)->get('/reading-plans/' . $plan->id . '/edit')->assertOk();
+    }
+
     // ------------------------------------------------------------------
     // update
     // ------------------------------------------------------------------
@@ -448,7 +491,7 @@ class ReadingPlanFlowTest extends TestCase
         $this->actingAs($user)
             ->put('/reading-plans/' . $plan->id, ['target_date' => $newDate])
             ->assertRedirect(route('reading-plans.index'))
-            ->assertSessionHas('success', '読書計画を更新しました');
+            ->assertSessionHas('success', '読書計画を更新しました。');
 
         $this->assertDatabaseHas('reading_plans', ['id' => $plan->id, 'target_date' => $newDate]);
     }
@@ -493,6 +536,131 @@ class ReadingPlanFlowTest extends TestCase
         $this->assertDatabaseHas('reading_plans', ['id' => $plan->id, 'target_date' => $original]);
     }
 
+    /**
+     * 前提: 完了済みの自分の計画1件
+     * 操作: PUT /reading-plans/{id}
+     * 期待: 403 で、期日は変わらない
+     *
+     * 画面から編集リンクを隠すだけでは足りない。ルートは /reading-plans/{plan} で
+     * id が丸見えなので、フォームを経由せず直接叩ける。403 と DB の両方を見る。
+     */
+    public function test_完了済みの読書計画は更新できない(): void
+    {
+        $user = User::factory()->create();
+        $original = now()->addDays(5)->toDateString();
+        $plan = $this->planFor($user, [
+            'status' => ReadingPlanStatus::Completed,
+            'completed_at' => now(),
+            'target_date' => $original,
+        ]);
+
+        $this->actingAs($user)
+            ->put('/reading-plans/' . $plan->id, ['target_date' => now()->addDays(20)->toDateString()])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('reading_plans', ['id' => $plan->id, 'target_date' => $original]);
+    }
+
+    /**
+     * 前提: 期限切れの自分の計画1件(期日は3日前)
+     * 操作: PUT /reading-plans/{id}(未来の期日)
+     * 期待: 期日が変わり、ステータスが進行中に戻る
+     *
+     * 要件「計画の期日変更で期限切れ計画は進行中に戻り」の本体。
+     * 復活を担当するのは ReadingPlan::reschedule()。
+     *
+     * これが無いと expired は片道切符になる。status へ書き込む経路は
+     * 日次バッチ(→ Expired)と読了(→ Completed)の2つしかなく、
+     * どちらも InProgress へは戻さないため、期日を未来に変えても
+     * 永久に期限切れ表示のままになる。
+     */
+    public function test_期限切れの読書計画の期日を変えると進行中に戻る(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->planFor($user, [
+            'status' => ReadingPlanStatus::Expired,
+            'target_date' => now()->subDays(3)->toDateString(),
+        ]);
+        $newDate = now()->addDays(10)->toDateString();
+
+        $this->actingAs($user)
+            ->put('/reading-plans/' . $plan->id, ['target_date' => $newDate])
+            ->assertRedirect(route('reading-plans.index'))
+            ->assertSessionHas('success', '読書計画を更新しました。');
+
+        $this->assertDatabaseHas('reading_plans', [
+            'id' => $plan->id,
+            'target_date' => $newDate,
+            'status' => ReadingPlanStatus::InProgress->value,
+        ]);
+    }
+
+    /**
+     * 前提: 進行中の自分の計画1件
+     * 操作: PUT /reading-plans/{id}(未来の期日)
+     * 期待: 期日は変わり、ステータスは進行中のまま
+     *
+     * reschedule() が「Expired のときだけ戻す」ことを固定する。
+     * if を外して常に InProgress を代入する実装にしても、上のテストだけなら通ってしまう。
+     * 完了済みが混ざらないことは Policy 側(403)が保証しているので、
+     * ここで見るのは進行中が素通りすることだけ。
+     */
+    public function test_進行中の読書計画の期日を変えてもステータスは変わらない(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->planFor($user, [
+            'status' => ReadingPlanStatus::InProgress,
+            'target_date' => now()->addDay()->toDateString(),
+        ]);
+        $newDate = now()->addDays(10)->toDateString();
+
+        $this->actingAs($user)
+            ->put('/reading-plans/' . $plan->id, ['target_date' => $newDate])
+            ->assertRedirect(route('reading-plans.index'));
+
+        $this->assertDatabaseHas('reading_plans', [
+            'id' => $plan->id,
+            'target_date' => $newDate,
+            'status' => ReadingPlanStatus::InProgress->value,
+        ]);
+    }
+
+    /**
+     * 前提: 期限切れの自分の計画1件
+     * 操作: PUT /reading-plans/{id}(未来の期日)
+     * 期待: reading_plans への更新文(UPDATE)は1回だけ
+     *
+     * 期日とステータスを別々に保存すると UPDATE が2文に割れ、
+     * 片方だけ通った行が残りうる(期日は未来なのにステータスは期限切れ)。
+     * reschedule() は両方をメモリ上で書き換えてから1回だけ save() するので、
+     * SQL 文が1つに収まり、それ自体が原子的になる。だから Transaction が要らない。
+     *
+     * この設計判断をここで固定する。2文に戻した瞬間に落ちる。
+     */
+    public function test_期日の更新で発行される更新文は1本だけ(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->planFor($user, [
+            'status' => ReadingPlanStatus::Expired,
+            'target_date' => now()->subDays(3)->toDateString(),
+        ]);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this->actingAs($user)
+            ->put('/reading-plans/' . $plan->id, ['target_date' => now()->addDays(10)->toDateString()])
+            ->assertRedirect(route('reading-plans.index'));
+
+        $updates = collect(DB::getQueryLog())
+            ->filter(fn (array $query) => str_contains($query['query'], 'update "reading_plans"'))
+            ->count();
+
+        DB::disableQueryLog();
+
+        $this->assertSame(1, $updates);
+    }
+
     // ------------------------------------------------------------------
     // destroy
     // ------------------------------------------------------------------
@@ -510,7 +678,7 @@ class ReadingPlanFlowTest extends TestCase
         $this->actingAs($user)
             ->delete('/reading-plans/' . $plan->id)
             ->assertRedirect(route('reading-plans.index'))
-            ->assertSessionHas('success', '読書計画を削除しました');
+            ->assertSessionHas('success', '読書計画を削除しました。');
 
         $this->assertDatabaseMissing('reading_plans', ['id' => $plan->id]);
     }
@@ -551,7 +719,7 @@ class ReadingPlanFlowTest extends TestCase
         $this->actingAs($user)
             ->post('/reading-plans/' . $plan->id . '/complete')
             ->assertRedirect(route('reading-plans.index'))
-            ->assertSessionHas('success', '読書計画を完了しました');
+            ->assertSessionHas('success', '読書計画を完了しました。');
 
         $plan->refresh();
         $this->assertSame(ReadingPlanStatus::Completed, $plan->status);
@@ -574,7 +742,7 @@ class ReadingPlanFlowTest extends TestCase
 
         $this->actingAs($user)
             ->post('/reading-plans/' . $plan->id . '/complete')
-            ->assertSessionHas('success', '読書計画を完了しました');
+            ->assertSessionHas('success', '読書計画を完了しました。');
 
         $this->assertSame(ReadingPlanStatus::Completed, $plan->refresh()->status);
     }
@@ -599,7 +767,7 @@ class ReadingPlanFlowTest extends TestCase
         $this->actingAs($user)
             ->post('/reading-plans/' . $plan->id . '/complete')
             ->assertRedirect(route('reading-plans.index'))
-            ->assertSessionHas('error', 'この計画はすでに完了済みです');
+            ->assertSessionHas('error', 'この計画はすでに完了済みです。');
 
         $this->assertSame(
             $completedAt->toDateTimeString(),

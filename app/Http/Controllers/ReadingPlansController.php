@@ -62,10 +62,10 @@ class ReadingPlansController extends Controller
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['user_id' => Auth::id()]);
 
-            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
+            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください。');
         }
 
-        return redirect(route('reading-plans.index'))->with('success', '読書計画を登録しました');
+        return redirect(route('reading-plans.index'))->with('success', '読書計画を登録しました。');
     }
 
     /**
@@ -92,14 +92,14 @@ class ReadingPlansController extends Controller
     {
         $this->authorize('update', $plan);
         try {
-            $plan->update($request->validated());
+            $plan->reschedule($request->validated('target_date'));
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['plan_id' => $plan->id, 'target_date' => $request->target_date]);
 
-            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
+            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください。');
         }
 
-        return redirect(route('reading-plans.index'))->with('success', '読書計画を更新しました');
+        return redirect(route('reading-plans.index'))->with('success', '読書計画を更新しました。');
     }
 
     /**
@@ -116,10 +116,10 @@ class ReadingPlansController extends Controller
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['plan_id' => $plan->id]);
 
-            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
+            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください。');
         }
 
-        return redirect(route('reading-plans.index'))->with('success', '読書計画を削除しました');
+        return redirect(route('reading-plans.index'))->with('success', '読書計画を削除しました。');
     }
 
     /**
@@ -132,7 +132,7 @@ class ReadingPlansController extends Controller
     {
         $this->authorize('complete', $plan);
         if ($plan->status === ReadingPlanStatus::Completed) {
-            return redirect(route('reading-plans.index'))->with('error', 'この計画はすでに完了済みです');
+            return redirect(route('reading-plans.index'))->with('error', 'この計画はすでに完了済みです。');
         }
         try {
             $plan->status = ReadingPlanStatus::Completed;
@@ -141,9 +141,9 @@ class ReadingPlansController extends Controller
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['plan_id' => $plan->id]);
 
-            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください');
+            return redirect(route('reading-plans.index'))->with('error', '予期せぬエラーが発生しました。もう一度やり直してください。');
         }
 
-        return redirect(route('reading-plans.index'))->with('success', '読書計画を完了しました');
+        return redirect(route('reading-plans.index'))->with('success', '読書計画を完了しました。');
     }
 }
