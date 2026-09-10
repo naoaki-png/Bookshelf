@@ -51,4 +51,21 @@ class ReadingPlan extends Model
     {
         return $this->belongsTo(Book::class);
     }
+
+    /**
+     * 期日を変更する。期限切れだった計画は進行中に戻す。
+     *
+     * @param  string  $targetDate
+     * @return void
+     */
+    public function reschedule(string $targetDate): void
+    {
+        $this->target_date = $targetDate;
+
+        if ($this->status === ReadingPlanStatus::Expired) {
+            $this->status = ReadingPlanStatus::InProgress;
+        }
+
+        $this->save();
+    }
 }
