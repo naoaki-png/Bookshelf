@@ -279,12 +279,18 @@ class NotificationFlowTest extends TestCase
 
     /**
      * 前提: 書籍タイトルが分かっている計画1件
-     * 期待: data に timing / title / body の3キーが入り、title は書籍名になる
+     * 期待: data に timing / title / body / plan_id の4キーが入り、title は書籍名になる
      *
      * バッチはここに 'three_days_before' などの文字列を渡す。
      * 通知の中身がどういう形で保存されるかを1か所に固定しておくと、
      * ビュー側(data['title'] / data['body'] を読んでいる)と食い違ったときに
      * どちらが変わったのかを切り分けられる。
+     *
+     * ★ plan_id は画面に出ない。ビューが読むのは timing / title / body の3つだけなので、
+     * 一見「使われていないキー」に見えるが、消してはいけない。
+     * ReadingPlansController::destroy() が where('data->plan_id', ...) で
+     * 関連通知を絞り込むための唯一の手がかりになっている(notifications テーブルに
+     * 読書計画への外部キーは無い)。消すと削除処理が例外も出さずに0件になる。
      */
     public function test_通知データには書籍タイトルと本文が入る(): void
     {
@@ -296,10 +302,11 @@ class NotificationFlowTest extends TestCase
 
         $data = $user->notifications()->first()->data;
 
-        $this->assertSame(['timing', 'title', 'body'], array_keys($data));
+        $this->assertSame(['timing', 'title', 'body', 'plan_id'], array_keys($data));
         $this->assertSame('on_due_date', $data['timing']);
         $this->assertSame('テスト駆動開発', $data['title']);
         $this->assertSame('読書計画の期限は本日です。', $data['body']);
+        $this->assertSame($plan->id, $data['plan_id']);
     }
 
     /**

@@ -6,9 +6,13 @@ use App\Enums\ReadingPlanStatus;
 use App\Models\Book;
 use App\Models\ReadingPlan;
 use App\Models\User;
+use App\Notifications\ReadingPlanReminder;
+use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 /**
@@ -696,6 +700,107 @@ class ReadingPlanFlowTest extends TestCase
         $this->actingAs($user)->delete('/reading-plans/' . $plan->id)->assertForbidden();
 
         $this->assertDatabaseHas('reading_plans', ['id' => $plan->id]);
+    }
+
+    /**
+     * 前提: 自分の計画2件(A・B)と、他ユーザーの計画1件。それぞれに通知が1件ずつ
+     * 操作: DELETE /reading-plans/{Aのid}
+     * 期待: A の通知だけが消え、B と他人の通知は残る
+     *
+     * notifications テーブルには読書計画への外部キーが無い。
+     * 唯一の手がかりが data の中の plan_id なので、絞り込みは
+     * where('data->plan_id', ...) という JSON パスの比較になっている。
+     * ここを書き損じても「1件も消えない」か「全部消える」のどちらかに倒れるだけで
+     * 例外は出ないため、残すべきものが残っていることまで見る。
+     *
+     * B を同じユーザーに置いているのは、notifiable_id での絞り込みに
+     * すり替わったときに気づけるようにするため(ユーザーで絞ると B まで消える)。
+     */
+    public function test_読書計画を削除すると関連するリマインダー通知も消える(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        $target = $this->planFor($user);
+        $keep = $this->planFor($user);
+        $othersPlan = $this->planFor($other);
+
+        $user->notify(new ReadingPlanReminder($target, 'on_due_date'));
+        $user->notify(new ReadingPlanReminder($keep, 'on_due_date'));
+        $other->notify(new ReadingPlanReminder($othersPlan, 'on_due_date'));
+
+        $this->assertSame(3, DatabaseNotification::count());
+
+        $this->actingAs($user)
+            ->delete('/reading-plans/' . $target->id)
+            ->assertRedirect(route('reading-plans.index'))
+            ->assertSessionHas('success', '読書計画を削除しました。');
+
+        $this->assertDatabaseMissing('reading_plans', ['id' => $target->id]);
+
+        $remaining = DatabaseNotification::all()
+            ->map(fn (DatabaseNotification $notification) => $notification->data['plan_id'])
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertSame([$keep->id, $othersPlan->id], $remaining);
+    }
+
+    /**
+     * 前提: 自分の計画1件と、その通知1件
+     * 操作: DELETE /reading-plans/{id}
+     * 期待: トランザクションが1回だけ開かれる
+     *
+     * 評価基準は「これらの削除処理が Transaction 内で実行されているか」を問うている。
+     * 通知と計画は別テーブルなので、片方だけ成功した状態で終わると
+     * 「計画は消えたのに通知だけ残る」孤児が生まれる。
+     *
+     * 削除が2文に分かれている以上、囲まないと守れない。update() の
+     * test_期日の更新で発行される更新文は1本だけ と対になる判断で、
+     * あちらは「1文にまとめたから Transaction が要らない」ことを、
+     * こちらは「まとめられないから Transaction で囲んだ」ことを固定する。
+     *
+     * 数えているのは TransactionBeginning イベント。2 になったら
+     * 削除が別々のトランザクションに分かれた合図で、その瞬間に意味が失われる。
+     * RefreshDatabase 自身のトランザクションはテスト本体より先に開くので数に入らない。
+     */
+    public function test_通知と計画の削除は1つのトランザクションで実行される(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->planFor($user);
+        $user->notify(new ReadingPlanReminder($plan, 'on_due_date'));
+
+        $transactions = 0;
+        Event::listen(TransactionBeginning::class, function () use (&$transactions) {
+            $transactions++;
+        });
+
+        $this->actingAs($user)->delete('/reading-plans/' . $plan->id);
+
+        $this->assertSame(1, $transactions);
+    }
+
+    /**
+     * 前提: 他ユーザーの計画1件と、その通知1件
+     * 操作: DELETE /reading-plans/{他人のid}
+     * 期待: 403 で、計画も通知も残る
+     *
+     * authorize() より先に削除が動く並びだと、403 を返しながら通知だけ消える。
+     * ステータスコードだけ見ていると気づけないので、DB 側も見る。
+     */
+    public function test_他人の読書計画の削除に失敗したとき通知は消えない(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $plan = $this->planFor($other);
+
+        $other->notify(new ReadingPlanReminder($plan, 'on_due_date'));
+
+        $this->actingAs($user)->delete('/reading-plans/' . $plan->id)->assertForbidden();
+
+        $this->assertDatabaseHas('reading_plans', ['id' => $plan->id]);
+        $this->assertSame(1, DatabaseNotification::count());
     }
 
     // ------------------------------------------------------------------

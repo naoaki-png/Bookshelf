@@ -51,6 +51,7 @@ class ReadingPlanReminder extends Notification
                 'on_due_date' => '読書計画の期限は本日です。',
                 'three_days_after' => '読書計画の期限から3日が経過しました。',
             },
+            'plan_id' => $this->plan->id,
         ];
     }
 }
