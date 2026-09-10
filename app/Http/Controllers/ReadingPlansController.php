@@ -10,6 +10,8 @@ use App\Models\ReadingPlan;
 use Auth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -112,7 +114,10 @@ class ReadingPlansController extends Controller
     {
         $this->authorize('delete', $plan);
         try {
-            $plan->delete();
+            DB::transaction(function () use ($plan) {
+                DatabaseNotification::where('data->plan_id', $plan->id)->delete();
+                $plan->delete();
+            });
         } catch (\Exception $e) {
             Log::error($e->getMessage(), ['plan_id' => $plan->id]);
 
