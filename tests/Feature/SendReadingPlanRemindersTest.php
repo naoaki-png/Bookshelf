@@ -18,8 +18,11 @@ use Tests\TestCase;
  *
  * このコマンドは2種類の仕事をする。
  *
- *   1. 通知を送る    期日の3日前 / 当日 / 3日後 の計画に、それぞれ1通ずつ
- *   2. 状態を更新する 期日を過ぎた未完了の計画を Expired にする
+ *   1. 状態を更新する 期日を過ぎた未完了の計画を Expired にする
+ *   2. 通知を送る    期日の3日前 / 当日 / 3日後 の計画に、それぞれ1通ずつ
+ *
+ * この順番自体が仕様の一部になっている。3日後通知の抽出条件は Expired なので、
+ * 先に状態を更新しておかないと対象が1件も引けない。
  *
  * テストの土台は --date オプションにある。
  * バッチが内部で today() を呼んでいると、テストは実行した日によって
@@ -148,14 +151,36 @@ class SendReadingPlanRemindersTest extends TestCase
      * 前提: 期日が3日前で、すでに Expired になっている計画1件
      * 期待: three_days_after の通知が届く
      *
-     * ★ このテストが、抽出条件を where('status', InProgress) にできない理由そのもの。
-     * 3日後通知の対象は、前日までのバッチで必ず Expired に変わっている。
-     * 進行中だけに絞ると、3通目が1件も飛ばなくなる。
-     * 条件が「完了していないもの」でなければならない、という設計判断を固定する。
+     * ★ 3日後通知だけ抽出条件が Expired になる理由がここにある。
+     * 期日を過ぎた計画は handle() の先頭で Expired に変わるので、
+     * 3通目を送る時点で対象は必ず Expired になっている。
+     * 3本とも InProgress に揃えると、3通目が1件も飛ばなくなる。
+     * 要件は 進行中 / 進行中 / 期限切れ の3種類であって、1種類ではない。
      */
     public function test_期日を過ぎた計画にも3日後の通知が届く(): void
     {
         $this->plan('2026-08-29', ReadingPlanStatus::Expired);
+
+        $this->runBatch();
+
+        $this->assertSame('three_days_after', DatabaseNotification::sole()->data['timing']);
+    }
+
+    /**
+     * 前提: 期日が3日前なのに、まだ InProgress のままの計画1件
+     *       (前日のバッチが動かなかった日に起きる状態)
+     * 期待: three_days_after の通知が届く
+     *
+     * ★ 期限切れ化が handle() の先頭にあることを固定するテスト。
+     * 上のテストは最初から Expired の行を置いているので、
+     * update を通知ループのうしろに戻しても通ってしまう。
+     * こちらは update が先に走ってこの行を Expired に変えない限り
+     * 抽出条件(Expired)に引っかからず、3通目が飛ばない。
+     * つまり「先頭に移した」という今回の変更そのものが、落ちると鳴る。
+     */
+    public function test_期限切れ化されていない計画でも3日後の通知が届く(): void
+    {
+        $this->plan('2026-08-29');
 
         $this->runBatch();
 
@@ -190,7 +215,8 @@ class SendReadingPlanRemindersTest extends TestCase
      *
      * 読み終わった本に「期限まであと3日です」は届いてはいけない。
      * 3日前(= すでに期日超過)の完了済みも含めているのは、
-     * 条件が != Completed であることを3本すべてで確認するため。
+     * 先頭の期限切れ化が Completed を除外していることまで見るため。
+     * ここが漏れると完了済みが Expired にされ、3通目が飛んでしまう。
      */
     public function test_完了済みの計画には通知が送られない(): void
     {
