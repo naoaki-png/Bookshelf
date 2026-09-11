@@ -34,10 +34,11 @@ class SendReadingPlanReminders extends Command
         $date = $this->option('date')
             ? Carbon::parse($this->option('date'))
             : Carbon::today();
+        ReadingPlan::where('target_date', '<', $date->format('Y-m-d'))->where('status', '!=', ReadingPlanStatus::Completed)->update(['status' => ReadingPlanStatus::Expired]);
 
-        $before = ReadingPlan::where('target_date', $date->copy()->addDays(3)->format('Y-m-d'))->where('status', '!=', ReadingPlanStatus::Completed)->with('book', 'user')->get();
-        $due = ReadingPlan::where('target_date', $date->format('Y-m-d'))->where('status', '!=', ReadingPlanStatus::Completed)->with('book', 'user')->get();
-        $after = ReadingPlan::where('target_date', $date->copy()->subDays(3)->format('Y-m-d'))->where('status', '!=', ReadingPlanStatus::Completed)->with('book', 'user')->get();
+        $before = ReadingPlan::where('target_date', $date->copy()->addDays(3)->format('Y-m-d'))->where('status', ReadingPlanStatus::InProgress)->with('book', 'user')->get();
+        $due = ReadingPlan::where('target_date', $date->format('Y-m-d'))->where('status', ReadingPlanStatus::InProgress)->with('book', 'user')->get();
+        $after = ReadingPlan::where('target_date', $date->copy()->subDays(3)->format('Y-m-d'))->where('status', ReadingPlanStatus::Expired)->with('book', 'user')->get();
         foreach ($before as $plan) {
             $plan->user->notify(new ReadingPlanReminder($plan, 'three_days_before'));
         }
@@ -47,7 +48,6 @@ class SendReadingPlanReminders extends Command
         foreach ($after as $plan) {
             $plan->user->notify(new ReadingPlanReminder($plan, 'three_days_after'));
         }
-        ReadingPlan::where('target_date', '<', $date->format('Y-m-d'))->where('status', '!=', ReadingPlanStatus::Completed)->update(['status' => ReadingPlanStatus::Expired]);
 
         return Command::SUCCESS;
     }
