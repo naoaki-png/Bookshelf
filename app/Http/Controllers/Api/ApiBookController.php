@@ -23,19 +23,10 @@ class ApiBookController extends Controller
      */
     public function index(ApiBookIndexRequest $request): AnonymousResourceCollection
     {
-        $keyword = $request->input('keyword');
-        $genreName = $request->input('genre');
-        $perPage = $request->input('per_page', 10);
-        $books = Book::query()->with('genres')->withAvg('reviews', 'rating')->withCount('reviews');
-        if ($keyword) {
-            $books->where('title', 'like', '%' . $keyword . '%');
-        }
-        if ($genreName) {
-            $books->whereHas('genres', function ($query) use ($genreName) {
-                $query->where('name', $genreName);
-            });
-        }
-        $books = $books->paginate($perPage);
+        $perPage = $request->input('per_page', 20);
+        $books = Book::withAvg('reviews', 'rating')->withCount('reviews')
+            ->with(['genres'])->keyword($request->input('keyword'))
+            ->ofGenre($request->input('genre_id'))->paginate($perPage);
 
         return BookIndexResource::collection($books);
     }
