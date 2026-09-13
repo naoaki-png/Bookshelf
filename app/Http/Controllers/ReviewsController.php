@@ -36,7 +36,7 @@ class ReviewsController extends Controller
             Review::create($data);
         });
 
-        return redirect(route('books.show', $book))->with('success', 'レビューを投稿しました');
+        return redirect(route('books.show', $book))->with('success', 'レビューを投稿しました。');
     }
 
     /**
@@ -56,7 +56,7 @@ class ReviewsController extends Controller
     /**
      * レビューを更新する。
      *
-     * 更新したレビューの位置まで書籍詳細ページを開き直す。
+     * レビューは書籍詳細ページ内にあるので、更新後はその書籍の詳細へ戻す。
      *
      * @param  ReviewRequest  $request
      * @param  Review  $review
@@ -69,7 +69,7 @@ class ReviewsController extends Controller
         $review->update($data);
         $book = $review->bookUser->book;
 
-        return redirect(route('books.show', $book) . '#review-' . $review->id);
+        return redirect(route('books.show', $book))->with('success', 'レビューを更新しました。');
     }
 
     /**
@@ -84,7 +84,7 @@ class ReviewsController extends Controller
         $book = $review->bookUser->book;
         $review->delete();
 
-        return redirect(route('books.show', $book) . '#review-section');
+        return redirect(route('books.show', $book))->with('success', 'レビューを削除しました。');
     }
 
     /**
@@ -107,6 +107,6 @@ class ReviewsController extends Controller
         }
         $book = $review->bookUser->book;
 
-        return redirect(route('books.show', $book) . '#review-' . $review->id);
+        return redirect(route('books.show', $book));
     }
 }
