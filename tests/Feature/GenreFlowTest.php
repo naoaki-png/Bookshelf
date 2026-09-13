@@ -51,7 +51,8 @@ class GenreFlowTest extends TestCase
      *
      * 前提: 書籍1冊が紐づいたジャンル1件
      * 操作: DELETE /genres/{genre}
-     * 期待: genres に残る / 元の画面へ戻る / error メッセージが付く
+     * 期待: genres に残る / 元の画面へ戻る /
+     *       error に「このジャンルには書籍が紐付いているため削除できません。」
      *
      * 「残ること」を assertDatabaseHas で見ている理由:
      * このルートは削除できない場合でもエラー画面を出さず、
@@ -59,6 +60,11 @@ class GenreFlowTest extends TestCase
      * 削除されたかどうかが分からない。DB を見ないと判定できない。
      *
      * from() を書いているのは back() で戻すため(お気に入りのトグルと同じ理由)。
+     *
+     * error の文面まで固定している理由:
+     * 要件はこの拒否メッセージの文言そのものを指定している。
+     * 拒否の挙動が正しくても文言が違うと要件を満たさないので、
+     * キーの有無だけでなく本文まで縛って、書き換えを検出できるようにした。
      */
     public function test_書籍が紐づいたジャンルは削除できない(): void
     {
@@ -71,7 +77,7 @@ class GenreFlowTest extends TestCase
             ->from(route('genres.index'))
             ->delete('/genres/' . $genre->id)
             ->assertRedirect(route('genres.index'))
-            ->assertSessionHas('error');
+            ->assertSessionHas('error', 'このジャンルには書籍が紐付いているため削除できません。');
 
         $this->assertDatabaseHas('genres', ['id' => $genre->id]);
     }

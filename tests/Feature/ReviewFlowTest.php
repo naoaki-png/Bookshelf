@@ -27,7 +27,8 @@ class ReviewFlowTest extends TestCase
      *
      * 前提: ユーザー1人、書籍1冊。レビューも book_users もまだ0行
      * 操作: 正しい rating と comment で POST /books/{book}/reviews
-     * 期待: reviews に1行 / book_users にも1行できる / books.show へリダイレクト
+     * 期待: reviews に1行 / book_users にも1行できる /
+     *       books.show へリダイレクト + 「レビューを投稿しました。」
      *
      * book_users を見ている理由:
      * ReviewsController@store は、投稿者と書籍の組み合わせで BookUser を
@@ -45,7 +46,8 @@ class ReviewFlowTest extends TestCase
                 'rating' => 4,
                 'comment' => '投稿したレビューのコメント',
             ])
-            ->assertRedirect(route('books.show', $book));
+            ->assertRedirect(route('books.show', $book))
+            ->assertSessionHas('success', 'レビューを投稿しました。');
 
         $this->assertDatabaseHas('book_users', [
             'user_id' => $user->id,
@@ -103,13 +105,19 @@ class ReviewFlowTest extends TestCase
      *
      * 前提: 自分が投稿したレビュー1件(rating 2)
      * 操作: rating と comment を書き換えて PUT /reviews/{review}
-     * 期待: reviews の内容が変わる / 行は増えない / 該当レビューのアンカー付きでリダイレクト
+     * 期待: reviews の内容が変わる / 行は増えない /
+     *       その書籍の詳細へリダイレクト + 「レビューを更新しました。」
      *
-     * リダイレクト先に #review-{id} が付くところまで見ている理由:
+     * リダイレクト先を見ている理由:
      * 更新後に「どこへ戻すか」もコントローラーが決めている仕様の一部で、
-     * $review->bookUser->book をたどってリダイレクト先を組み立てている。
+     * $review->bookUser->book をたどって戻り先の書籍を組み立てている。
      * このたどり方が壊れると 500 になるため、リダイレクト先の検証が
      * そのままリレーションの検証を兼ねる。
+     *
+     * 以前は #review-{id} を付けて戻していたが、対応する id がビューに
+     * 存在せず機能していなかったため #85 で外した。
+     * 将来アンカーを有効にする場合、ページ上部のフラッシュメッセージが
+     * 画面外へ出るため、表示位置とセットで考える必要がある。
      *
      * 行数も見ているのは、update が create に書き換わったときに
      * 「新しい行が増えて古い行も残る」壊れ方を拾うため。
@@ -133,7 +141,8 @@ class ReviewFlowTest extends TestCase
                 'rating' => 5,
                 'comment' => '更新後のコメント',
             ])
-            ->assertRedirect(route('books.show', $book) . '#review-' . $review->id);
+            ->assertRedirect(route('books.show', $book))
+            ->assertSessionHas('success', 'レビューを更新しました。');
 
         $this->assertDatabaseHas('reviews', [
             'id' => $review->id,
@@ -148,7 +157,8 @@ class ReviewFlowTest extends TestCase
      *
      * 前提: 同じ書籍に、自分のレビュー1件と他人のレビュー1件
      * 操作: 自分のレビューに DELETE /reviews/{review}
-     * 期待: 自分のレビューだけ消えて reviews は1行残る / レビュー欄へリダイレクト
+     * 期待: 自分のレビューだけ消えて reviews は1行残る /
+     *       その書籍の詳細へリダイレクト + 「レビューを削除しました。」
      *
      * 他人のレビューを1件置いている理由は書籍の削除テストと同じで、
      * 消しすぎを同時に検出するため。
@@ -171,7 +181,8 @@ class ReviewFlowTest extends TestCase
 
         $this->actingAs($user)
             ->delete('/reviews/' . $myReview->id)
-            ->assertRedirect(route('books.show', $book) . '#review-section');
+            ->assertRedirect(route('books.show', $book))
+            ->assertSessionHas('success', 'レビューを削除しました。');
 
         $this->assertDatabaseMissing('reviews', ['id' => $myReview->id]);
         $this->assertDatabaseHas('reviews', ['id' => $othersReview->id]);
@@ -207,7 +218,7 @@ class ReviewFlowTest extends TestCase
         // 1回目 -- いいねが付く
         $this->actingAs($user)
             ->post('/reviews/' . $review->id . '/like')
-            ->assertRedirect(route('books.show', $book) . '#review-' . $review->id);
+            ->assertRedirect(route('books.show', $book));
 
         $this->assertDatabaseHas('review_likes', [
             'user_id' => $user->id,
