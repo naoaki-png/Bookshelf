@@ -101,7 +101,7 @@ class GenresController extends Controller
 
             return redirect(route('genres.index'))->with('success', 'ジャンルを削除しました。');
         } else {
-            return back()->with('error', '書籍数が０冊でないと削除できません。');
+            return back()->with('error', 'このジャンルには書籍が紐付いているため削除できません。');
         }
     }
 }

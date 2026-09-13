@@ -30,7 +30,8 @@ class BookFlowTest extends TestCase
      *
      * 前提: ユーザー1人、ジャンル2件。書籍はまだ0冊
      * 操作: すべての項目を正しく埋めて POST /books
-     * 期待: books に1行 / user_id が投稿者本人 / book_genres に2行 / books.index へリダイレクト
+     * 期待: books に1行 / user_id が投稿者本人 / book_genres に2行 /
+     *       登録した書籍の詳細へリダイレクト + 「書籍を登録しました。」
      *
      * user_id を検証している理由:
      * BooksController@store は user_id をリクエストから受け取らず、
@@ -40,6 +41,14 @@ class BookFlowTest extends TestCase
      * ジャンルを2件にしている理由:
      * sync() に配列がそのまま渡っていることを確かめるため。1件だと
      * 「たまたま先頭の1件だけ入った」状態と区別がつかない。
+     *
+     * リダイレクト先を「登録した書籍の」詳細で見ている理由:
+     * store() は Book::create() の戻り値をトランザクションのクロージャから
+     * 返してもらって、それをリダイレクト先に使っている。この return が抜けると
+     * route('books.show', null) になり必須パラメータ不足で落ちる。
+     * books.show を定数で書かず、DB から引いた書籍と突き合わせているのは、
+     * 「詳細ページに飛んだ」だけでなく「正しい書籍の詳細に飛んだ」ことまで
+     * 縛るため。取り違えても画面はそれらしく表示されてしまう。
      */
     public function test_ログイン済みユーザーは書籍を登録できる(): void
     {
@@ -47,7 +56,7 @@ class BookFlowTest extends TestCase
         $genreA = Genre::factory()->create(['name' => '小説']);
         $genreB = Genre::factory()->create(['name' => '技術書']);
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->post('/books', [
                 'title' => '登録した本のタイトル',
                 'author' => '登録した本の著者',
@@ -56,8 +65,13 @@ class BookFlowTest extends TestCase
                 'published_date' => '2020-01-01',
                 'image_url' => 'https://example.com/cover.jpg',
                 'genres' => [$genreA->id, $genreB->id],
-            ])
-            ->assertRedirect(route('books.index'));
+            ]);
+
+        // リダイレクト先の検証に登録された書籍そのものが要るので、先に取り出す。
+        $book = Book::where('isbn', '9784000000001')->first();
+
+        $response->assertRedirect(route('books.show', $book))
+            ->assertSessionHas('success', '書籍を登録しました。');
 
         $this->assertDatabaseHas('books', [
             'title' => '登録した本のタイトル',
@@ -69,7 +83,6 @@ class BookFlowTest extends TestCase
 
         // 中間テーブルは「2行あること」と「その2行が選んだジャンルであること」を分けて見る。
         // 件数だけだと、別のジャンル id が2件入っていても通ってしまう。
-        $book = Book::where('isbn', '9784000000001')->first();
         $this->assertDatabaseCount('book_genres', 2);
         $this->assertDatabaseHas('book_genres', ['book_id' => $book->id, 'genre_id' => $genreA->id]);
         $this->assertDatabaseHas('book_genres', ['book_id' => $book->id, 'genre_id' => $genreB->id]);
@@ -80,7 +93,8 @@ class BookFlowTest extends TestCase
      *
      * 前提: 自分の書籍1冊にジャンルA・Bが紐づいている。別にジャンルCも存在する
      * 操作: タイトルと著者を書き換え、ジャンルは C だけを選んで PUT /books/{book}
-     * 期待: books の内容が変わる / book_genres は C の1行だけになる / books.show へリダイレクト
+     * 期待: books の内容が変わる / book_genres は C の1行だけになる /
+     *       books.show へリダイレクト + 「書籍情報を更新しました。」
      *
      * 「Cが入ったこと」だけでなく「A・Bが消えたこと」を見ている理由:
      * BooksController@update は sync() を使っている。sync() は
@@ -113,7 +127,8 @@ class BookFlowTest extends TestCase
                 'image_url' => 'https://example.com/updated.jpg',
                 'genres' => [$genreC->id],
             ])
-            ->assertRedirect(route('books.show', $book));
+            ->assertRedirect(route('books.show', $book))
+            ->assertSessionHas('success', '書籍情報を更新しました。');
 
         $this->assertDatabaseHas('books', [
             'id' => $book->id,
@@ -135,7 +150,8 @@ class BookFlowTest extends TestCase
      *
      * 前提: 自分の書籍1冊、他人の書籍1冊。合わせて2冊
      * 操作: 自分の書籍に DELETE /books/{book}
-     * 期待: 自分の書籍だけが消えて books は1冊残る / books.index へリダイレクト
+     * 期待: 自分の書籍だけが消えて books は1冊残る /
+     *       books.index へリダイレクト + 「書籍を削除しました。」
      *
      * 他人の書籍を1冊置いている理由:
      * 「消えたこと」だけを見ると、条件を間違えて全件消すコードでも通ってしまう。
@@ -149,7 +165,8 @@ class BookFlowTest extends TestCase
 
         $this->actingAs($user)
             ->delete('/books/' . $myBook->id)
-            ->assertRedirect(route('books.index'));
+            ->assertRedirect(route('books.index'))
+            ->assertSessionHas('success', '書籍を削除しました。');
 
         $this->assertDatabaseMissing('books', ['id' => $myBook->id]);
         $this->assertDatabaseHas('books', ['id' => $othersBook->id]);
