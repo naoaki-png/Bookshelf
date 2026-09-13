@@ -79,12 +79,14 @@ class BooksController extends Controller
         $data = $request->only('title', 'author', 'isbn', 'description', 'published_date', 'image_url');
         $user = Auth::user();
         $data['user_id'] = $user->id;
-        DB::transaction(function () use ($data, $request) {
+        $book = DB::transaction(function () use ($data, $request) {
             $book = Book::create($data);
             $book->genres()->sync($request->input('genres'));
+
+            return $book;
         });
 
-        return redirect(route('books.index'))->with('success', '書籍を登録しました');
+        return redirect(route('books.show', $book))->with('success', '書籍を登録しました。');
     }
 
     /**
@@ -119,7 +121,7 @@ class BooksController extends Controller
             $book->genres()->sync($request->input('genres'));
         });
 
-        return redirect(route('books.show', $book));
+        return redirect(route('books.show', $book))->with('success', '書籍情報を更新しました。');
     }
 
     /**
@@ -133,7 +135,7 @@ class BooksController extends Controller
         $this->authorize('delete', $book);
         $book->delete();
 
-        return redirect(route('books.index'));
+        return redirect(route('books.index'))->with('success', '書籍を削除しました。');
     }
 
     /**
