@@ -9,6 +9,7 @@ use App\Models\Genre;
 use App\Models\Review;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -122,16 +123,33 @@ class BookApiTest extends TestCase
      * ヒットする本とヒットしない本を両方置く。
      * 「対象が返ること」だけでは絞り込みの証明にならず、
      * 「対象外が返らないこと」と対で見て初めて確定する。
+     *
+     * タイトル側と著者側を1本のテストで両方見ている理由:
+     * 機能要件は「キーワードに部分一致する書籍(title または author)」であり、
+     * 2つの仕様ではなく1つの OR 条件で1つの仕様。分けて書くと、
+     * title と author を AND で繋いだ実装(両方に含まれる本しか出ない)が
+     * どちらのテストでも落ちるのに、原因がどちらとも読めなくなる。
+     *
+     * 著者でヒットさせる本のタイトルにキーワードを入れていないのは、
+     * title 側の条件だけで拾えてしまうと author 側を検証したことに
+     * ならないため。
+     *
+     * 件名の一致は pluck して assertContains で見ている。
+     * 並び順を指定していないので data の添字は保証されない。
      */
-    public function test_キーワードでタイトルを部分一致検索できる(): void
+    public function test_キーワードはタイトルと著者のどちらにも部分一致する(): void
     {
-        Book::factory()->create(['title' => 'Laravel入門']);
-        Book::factory()->create(['title' => 'Python入門']);
+        Book::factory()->create(['title' => 'Laravel入門', 'author' => '田中太郎']);
+        Book::factory()->create(['title' => 'やさしい入門書', 'author' => 'Laravel 太郎']);
+        Book::factory()->create(['title' => 'Python入門', 'author' => '鈴木花子']);
 
-        $this->getJson(self::BASE . '?' . http_build_query(['keyword' => 'Laravel']))
+        $response = $this->getJson(self::BASE . '?' . http_build_query(['keyword' => 'Laravel']))
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.title', 'Laravel入門');
+            ->assertJsonCount(2, 'data');
+
+        $titles = collect($response->json('data'))->pluck('title')->all();
+        $this->assertContains('Laravel入門', $titles);
+        $this->assertContains('やさしい入門書', $titles);
     }
 
     /**
@@ -149,10 +167,14 @@ class BookApiTest extends TestCase
     }
 
     /**
-     * ジャンル絞り込みは「ジャンル名」で行う(実装が whereHas で name を見ているため)。
-     * Web 画面側は genre の id で絞る作りになっており、API とは受け取る値が違う。
+     * ジャンル絞り込みは genre_id(ジャンルの id)で受ける。
+     *
+     * もともと API だけが genre(ジャンル名)を受けていたが、Web 画面側は
+     * 最初から id で絞る作り(BookIndexRequest の exists:genres,id)で、
+     * 評価基準も genre_id を指している。#86 で Web 側に揃え、
+     * 絞り込み自体も Book::scopeOfGenre() を共用する形にした。
      */
-    public function test_ジャンル名で絞り込める(): void
+    public function test_genre_idでジャンルを絞り込める(): void
     {
         $target = Genre::factory()->create(['name' => '技術書']);
         $other = Genre::factory()->create(['name' => '小説']);
@@ -163,7 +185,7 @@ class BookApiTest extends TestCase
         $miss = Book::factory()->create(['title' => '対象外の本']);
         $miss->genres()->attach($other);
 
-        $this->getJson(self::BASE . '?' . http_build_query(['genre' => '技術書']))
+        $this->getJson(self::BASE . '?' . http_build_query(['genre_id' => $target->id]))
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.title', '対象の本');
@@ -185,8 +207,74 @@ class BookApiTest extends TestCase
     }
 
     /**
-     * 存在しないジャンル名を 422 にするのは意図した仕様。
-     * ApiBookIndexRequest が exists:genres,name で検証しているため、
+     * per_page を指定しないときの1ページは20件。
+     *
+     * 既定値はコントローラーの input('per_page', 20) の第2引数にしか無く、
+     * 指定ありのテストだけでは 10 に戻されても気づけない。
+     * 21件用意して「返るのは20件、total は21」を見ることで、
+     * 「たまたま全件が20件以下だった」状態と区別している。
+     *
+     * meta.per_page を見ないのは、クエリ文字列由来で型が安定しないため
+     * (per_page 指定のテストと同じ理由)。
+     */
+    public function test_per_pageを指定しないと1ページ20件になる(): void
+    {
+        Book::factory(21)->create();
+
+        $this->getJson(self::BASE)
+            ->assertOk()
+            ->assertJsonCount(20, 'data')
+            ->assertJsonPath('meta.total', 21);
+    }
+
+    /**
+     * 一覧はジャンルを eager load していて、書籍が増えてもクエリ本数が変わらない。
+     *
+     * BookIndexResource は書籍ごとにジャンルを出力するため、with('genres') が
+     * 外れると1冊につき1本ずつ SELECT が増える(N+1)。
+     * 返る JSON は同じなので、レスポンスだけを見るテストでは検出できない。
+     * 実際に #86 の作業中に with('genres') が一度落ちている。
+     *
+     * 総クエリ数ではなく genres への SELECT だけを数えているのは、
+     * 書籍数が変われば books 側のクエリの中身も変わるため。
+     * 見たいのは「関連を読むクエリが件数に比例して増えるか」だけ。
+     *
+     * 3冊と9冊で比べているのは、1冊だと N+1 でも1本になり
+     * eager load と区別が付かないため。
+     */
+    public function test_一覧のジャンル取得はN1にならない(): void
+    {
+        $genre = Genre::factory()->create();
+        Book::factory(3)->create()->each(fn (Book $book) => $book->genres()->attach($genre));
+
+        DB::enableQueryLog();
+
+        DB::flushQueryLog();
+        $this->getJson(self::BASE)->assertOk();
+        $withThreeBooks = $this->genreSelectCount();
+
+        Book::factory(6)->create()->each(fn (Book $book) => $book->genres()->attach($genre));
+
+        DB::flushQueryLog();
+        $this->getJson(self::BASE)->assertOk();
+        $withNineBooks = $this->genreSelectCount();
+
+        $this->assertSame($withThreeBooks, $withNineBooks);
+    }
+
+    /**
+     * genres テーブルへの SELECT が何本飛んだかを数える。
+     */
+    private function genreSelectCount(): int
+    {
+        return collect(DB::getQueryLog())
+            ->filter(fn ($query) => str_contains($query['query'], 'from "genres"'))
+            ->count();
+    }
+
+    /**
+     * 存在しないジャンルIDを 422 にするのは意図した仕様。
+     * ApiBookIndexRequest が exists:genres,id で検証しているため、
      * 「該当なしの空 200」ではなくバリデーションエラーになる。
      *
      * @dataProvider 一覧の不正なクエリ
@@ -204,7 +292,7 @@ class BookApiTest extends TestCase
     {
         return [
             'per_pageが上限超え' => [['per_page' => 101], 'per_page'],
-            '存在しないジャンル名' => [['genre' => '存在しないジャンル'], 'genre'],
+            '存在しないジャンルID' => [['genre_id' => 999], 'genre_id'],
             'pageが0' => [['page' => 0], 'page'],
         ];
     }
