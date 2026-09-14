@@ -632,6 +632,10 @@ class BookApiTest extends TestCase
      * 要件「存在しないIDが指定された場合はエラーレスポンスを返すこと」の確認。
      * ルートモデルバインディングが 404 を投げるため、コントローラ側に記述は要らない。
      *
+     * ステータスだけでなくボディの形まで要件が指定している。
+     * 既定の { "message": "No query results for model ..." } を Handler で差し替えているので、
+     * assertNotFound() だけでは差し替えが外れても気づけない。assertExactJson で丸ごと固定する。
+     *
      * @dataProvider 単一書籍を指すエンドポイント
      */
     public function test_存在しないIDはNotFoundになる(string $method): void
@@ -639,7 +643,8 @@ class BookApiTest extends TestCase
         $user = User::factory()->create();
 
         $this->json($method, self::BASE . '/999999', [], $this->bearer($user))
-            ->assertNotFound();
+            ->assertNotFound()
+            ->assertExactJson(['error' => '書籍が見つかりませんでした。']);
     }
 
     public static function 単一書籍を指すエンドポイント(): array
@@ -649,5 +654,69 @@ class BookApiTest extends TestCase
             '更新' => ['PUT'],
             '削除' => ['DELETE'],
         ];
+    }
+
+    /**
+     * 404 の文言を「書籍が見つかりませんでした。」に差し替えているのは、
+     * ルートモデルバインディングが本を見つけられなかったときだけ。
+     * パス自体が存在しないときに同じ文言を返すと、URL の打ち間違いを
+     * 「その本が無い」と読み違えさせる。Handler の絞り込み
+     * (getPrevious() が ModelNotFoundException か)を固定する。
+     */
+    public function test_APIの存在しないパスは書籍ではなくリソースの文言を返す(): void
+    {
+        $this->getJson('/api/v1/bookss')
+            ->assertNotFound()
+            ->assertExactJson(['error' => 'リソースが見つかりませんでした。']);
+    }
+
+    /**
+     * Handler はアプリ全体の例外が集まる場所なので、絞り込みを誤ると
+     * Web 画面の 404 まで API のエラー形式に変わる。
+     * $request->is('api/*') が効いていることを、API の外側から固定する。
+     */
+    public function test_Web側の404はAPIのエラー形式に変わらない(): void
+    {
+        $this->getJson('/books/999999')
+            ->assertNotFound()
+            ->assertJsonMissingPath('error');
+    }
+
+    /**
+     * 認可を ApiBookRequest::authorize() に置いた理由の確認。
+     *
+     * FormRequest のバリデーションはコントローラ本体より先に走るため、
+     * 認可をコントローラの1行目に置いたままだと「他人の書籍 + 不正な payload」で
+     * 422 が先に返り、403 までたどり着かない。
+     * 所有者かどうかは payload の中身と無関係に決まる以上、空で送っても
+     * 403 で止まらなければならない。上の test_他人の書籍は更新も削除もできない は
+     * 正常な payload を送っているため、この経路は縛れていない。
+     */
+    public function test_他人の書籍は不正なpayloadでも403で止まる(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $book = Book::factory()->create(['user_id' => $owner->id]);
+
+        $this->json('PUT', self::BASE . '/' . $book->id, [], $this->bearer($other))
+            ->assertForbidden()
+            ->assertJsonPath('message', '他の人が登録した書籍は更新できません。');
+
+        $this->assertDatabaseHas('books', ['id' => $book->id, 'title' => $book->title]);
+    }
+
+    /**
+     * 上のテストと対。認可を前に出したことで、所有者に対するバリデーションまで
+     * 素通りするようになっていないかを見る。
+     * 「403 が返る」だけを縛ると、authorize() が常に拒否しても緑のままになる。
+     */
+    public function test_所有者の不正なpayloadは422のまま(): void
+    {
+        $owner = User::factory()->create();
+        $book = Book::factory()->create(['user_id' => $owner->id]);
+
+        $this->json('PUT', self::BASE . '/' . $book->id, [], $this->bearer($owner))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['title', 'author', 'genres']);
     }
 }
