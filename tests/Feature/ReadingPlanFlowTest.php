@@ -43,10 +43,11 @@ use Tests\TestCase;
  *    絞り込みはクエリ文字列(文字列)で来て、DB には文字列で入り、
  *    取り出すと ReadingPlanStatus になる。この往復が壊れていないかを見る。
  *
- * なお reading_plans には unique(['user_id','book_id']) が張ってあり、
- * StoreReadingPlanRequest 側にも同じ意味の unique ルールがある。
- * DB 制約に到達する前にバリデーションで止まることを確認しておく
- * (到達すると QueryException になり、try-catch の「予期せぬエラー」に化ける)。
+ * なお reading_plans に DB 制約は無い(#88 で unique(['user_id','book_id']) を外した)。
+ * 「同じ本を二重に計画できない」を保証しているのは FormRequest だけになり、
+ * しかも条件は「進行中の他計画が存在しないこと」に絞られている。
+ * 完了済み・期限切れの本は計画を立て直せるのが正しい挙動なので、
+ * 作成側と編集側の両方にテストを置いて、締めすぎと緩めすぎの両方を監視する。
  */
 class ReadingPlanFlowTest extends TestCase
 {
@@ -350,10 +351,9 @@ class ReadingPlanFlowTest extends TestCase
      * 操作: POST /reading-plans(同じ book_id)
      * 期待: book_id でエラーになり、DB は1件のまま
      *
-     * DB にも unique(['user_id','book_id']) があるので、バリデーションが抜けても
-     * 二重登録はされない。ただしその場合は QueryException → catch → 「予期せぬエラー」
-     * になり、ユーザーに出る文言が変わる。ここで見たいのは
-     * 「重複だと分かるエラーが返ること」なので assertSessionHasErrors で確認する。
+     * #88 で DB の unique を外したので、ここを守っているのは FormRequest だけになった。
+     * ルールが抜けると二重登録がそのまま通る。
+     * planFor() の既定ステータスは進行中なので、このケースは重複制御に掛かる。
      */
     public function test_同じ書籍を二重に登録できない(): void
     {
@@ -396,6 +396,63 @@ class ReadingPlanFlowTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('reading_plans', ['user_id' => $user->id, 'book_id' => $book->id]);
+        $this->assertDatabaseCount('reading_plans', 2);
+    }
+
+    /**
+     * 前提: 同じ本の「完了済み」の計画が1件
+     * 操作: POST /reading-plans(同じ book_id)
+     * 期待: 登録できて2件になる
+     *
+     * #88 で重複制御を「進行中の他計画が存在しないこと」に絞った。
+     * 読み終えた本をもう一度読み直す計画は立てられるのが正しい。
+     * ->where('status', InProgress) が抜けると、一度読んだ本は二度と計画できなくなる。
+     */
+    public function test_完了済みの書籍でも新しい読書計画を立てられる(): void
+    {
+        $user = User::factory()->create();
+        $book = Book::factory()->create();
+        $this->planFor($user, [
+            'book_id' => $book->id,
+            'status' => ReadingPlanStatus::Completed,
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->post('/reading-plans', [
+                'book_id' => $book->id,
+                'target_date' => now()->addDays(7)->toDateString(),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('reading_plans', 2);
+    }
+
+    /**
+     * 前提: 同じ本の「期限切れ」の計画が1件
+     * 操作: POST /reading-plans(同じ book_id)
+     * 期待: 登録できて2件になる
+     *
+     * 完了済みと対にして、進行中以外の2状態を両方押さえる。
+     * 「読めなかった本を仕切り直す」経路なので、こちらのほうが実際に起きやすい。
+     */
+    public function test_期限切れの書籍でも新しい読書計画を立てられる(): void
+    {
+        $user = User::factory()->create();
+        $book = Book::factory()->create();
+        $this->planFor($user, [
+            'book_id' => $book->id,
+            'status' => ReadingPlanStatus::Expired,
+            'target_date' => now()->subDays(3)->toDateString(),
+        ]);
+
+        $this->actingAs($user)
+            ->post('/reading-plans', [
+                'book_id' => $book->id,
+                'target_date' => now()->addDays(7)->toDateString(),
+            ])
+            ->assertSessionHasNoErrors();
+
         $this->assertDatabaseCount('reading_plans', 2);
     }
 
@@ -627,6 +684,57 @@ class ReadingPlanFlowTest extends TestCase
             'target_date' => $newDate,
             'status' => ReadingPlanStatus::InProgress->value,
         ]);
+    }
+
+    /**
+     * 前提: 同じ本に「期限切れ」と「進行中」の計画が1件ずつ
+     * 操作: 期限切れのほうを PUT で未来の期日に変更
+     * 期待: book_id でエラー。期限切れのまま据え置かれ、進行中は1件のまま
+     *
+     * #88 の本丸。編集フォームは book_id を送らないが、reschedule() が
+     * status を InProgress に書き換えるので、編集操作だけで
+     * 「同じ本に進行中が2件」を作れてしまう。
+     * DB の unique(['user_id','book_id']) を外した以上、止められるのはここだけ。
+     *
+     * このテストが縛っているのは UpdateReadingPlanRequest の
+     * prepareForValidation()。merge を外すと book_id がリクエストに存在せず、
+     * unique ルールが何も見ないまま素通りする。
+     * ->where('status', InProgress) は「完了済み/期限切れでも登録できる」2本が、
+     * ->ignore() は「自分の読書計画の期日を更新できる」が守っている。3つで分担している。
+     */
+    public function test_編集で同じ書籍の進行中の計画が2件になることはない(): void
+    {
+        $user = User::factory()->create();
+        $book = Book::factory()->create();
+
+        $expired = $this->planFor($user, [
+            'book_id' => $book->id,
+            'status' => ReadingPlanStatus::Expired,
+            'target_date' => now()->subDays(3)->toDateString(),
+        ]);
+        $this->planFor($user, [
+            'book_id' => $book->id,
+            'status' => ReadingPlanStatus::InProgress,
+            'target_date' => now()->addDays(10)->toDateString(),
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('reading-plans.edit', $expired))
+            ->put('/reading-plans/' . $expired->id, [
+                'target_date' => now()->addDays(20)->toDateString(),
+            ])
+            ->assertSessionHasErrors(['book_id' => 'この書籍は既に進行中の読書計画が存在します。']);
+
+        $this->assertDatabaseHas('reading_plans', [
+            'id' => $expired->id,
+            'status' => ReadingPlanStatus::Expired->value,
+        ]);
+
+        $inProgress = ReadingPlan::where('user_id', $user->id)
+            ->where('book_id', $book->id)
+            ->where('status', ReadingPlanStatus::InProgress)
+            ->count();
+        $this->assertSame(1, $inProgress);
     }
 
     /**
