@@ -19,7 +19,6 @@ return new class extends Migration
             $table->timestamp('completed_at')->nullable();
             $table->string('status')->default('in_progress');
             $table->timestamps();
-            $table->unique(['user_id', 'book_id']);
         });
     }
 

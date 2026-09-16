@@ -219,6 +219,42 @@ class ValidationTest extends TestCase
     }
 
     /**
+     * レビューのコメントは1000文字まで。1001文字目から弾かれる。
+     *
+     * 前提: ログイン済みユーザー1人、書籍1冊
+     * 操作: 1001文字 → 1000文字 の順で POST
+     * 期待: 1001文字は comment にエラー、1000文字は通って reviews が1件
+     *
+     * 境界の内と外を1文字差で突いている。上限が 255 のままだと
+     * 1000文字のほうが落ちるので、このテストは「上限が 1000 であること」を
+     * 両側から固定している(#88 / 評価シート82行目)。
+     * max は mb_strlen で数えるので、全角文字1つが1文字。
+     */
+    public function test_レビューのコメントは1000文字まで投稿できる(): void
+    {
+        $user = User::factory()->create();
+        $book = Book::factory()->create();
+
+        // 上限の1つ外
+        $this->actingAs($user)
+            ->post('/books/' . $book->id . '/reviews', [
+                'rating' => 3,
+                'comment' => str_repeat('あ', 1001),
+            ])
+            ->assertInvalid(['comment']);
+
+        // ちょうど上限
+        $this->actingAs($user)
+            ->post('/books/' . $book->id . '/reviews', [
+                'rating' => 3,
+                'comment' => str_repeat('あ', 1000),
+            ])
+            ->assertValid();
+
+        $this->assertDatabaseCount('reviews', 1);
+    }
+
+    /**
      * ジャンル名は重複できないが、自分自身の名前なら更新できる。
      *
      * 前提: 「小説」というジャンルが1件
