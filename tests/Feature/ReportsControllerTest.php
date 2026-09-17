@@ -31,7 +31,7 @@ use Tests\TestCase;
  *    重複したときの rating は「最高評価」を採る仕様。
  *
  * 2. 1件のレビューが複数のジャンルに数えられる。
- *    books --- book_genres --- genres の多対多なので、2ジャンル持つ本の
+ *    books --- book_genre --- genres の多対多なので、2ジャンル持つ本の
  *    レビュー1件は genre_ratings では2回数えられる。合計が総レビュー数と
  *    一致しないのは正常。
  */

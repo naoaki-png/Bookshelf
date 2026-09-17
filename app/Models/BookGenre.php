@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * 書籍とジャンルを結ぶ中間テーブル(book_genres)のモデル。
+ * 書籍とジャンルを結ぶ中間テーブル(book_genre)のモデル。
  *
  * 書籍は複数のジャンルを持ち、ジャンルは複数の書籍を持つ。
  * その組み合わせを1行ずつ保持する。
@@ -19,12 +19,12 @@ class BookGenre extends Model
     /**
      * このモデルが使うテーブル名。
      *
-     * クラス名から推測すると book_genres ではなく book_genre になるため、
-     * 明示している。
+     * クラス名 BookGenre から推測されるのは book_genres(複数形)だが、
+     * 実体は中間テーブルの規約に従った book_genre(単数形)なので明示している。
      *
      * @var string
      */
-    protected $table = 'book_genres';
+    protected $table = 'book_genre';
 
     /**
      * 一括代入を許可する属性。
