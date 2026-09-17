@@ -15,10 +15,10 @@ use Tests\TestCase;
  * 1回目の書き込みまで取り消されることを確認する。
  *
  * 対象は DB::transaction を適用した5箇所。
- *   1. BooksController@store        books      → book_genres
- *   2. BooksController@update       books      → book_genres
- *   3. ApiBookController@store      books      → book_genres
- *   4. ApiBookController@update     books      → book_genres
+ *   1. BooksController@store        books      → book_genre
+ *   2. BooksController@update       books      → book_genre
+ *   3. ApiBookController@store      books      → book_genre
+ *   4. ApiBookController@update     books      → book_genre
  *   5. ReviewsController@store      book_users → reviews
  *
  * 【失敗をどう起こしているか】
@@ -112,7 +112,7 @@ class TransactionRollbackTest extends TestCase
      * Web の書籍登録で、ジャンルの紐付けが失敗すると書籍も残らない。
      *
      * 前提: ユーザー1人、ジャンル1件。書籍は0冊
-     * 操作: book_genres への書き込みを失敗させた状態で POST /books
+     * 操作: book_genre への書き込みを失敗させた状態で POST /books
      * 期待: books が0件のまま
      *
      * トランザクションが無いと books に1行だけ残る。
@@ -125,7 +125,7 @@ class TransactionRollbackTest extends TestCase
         $genre = Genre::factory()->create();
 
         $this->withoutExceptionHandling();
-        $this->failOnWriteTo('book_genres');
+        $this->failOnWriteTo('book_genre');
 
         $this->assertOperationFailed(function () use ($user, $genre) {
             $this->actingAs($user)->post('/books', [
@@ -143,7 +143,7 @@ class TransactionRollbackTest extends TestCase
      * Web の書籍更新で、ジャンルの貼り替えが失敗すると本文の更新も戻る。
      *
      * 前提: 自分の書籍1冊(タイトルは「更新前のタイトル」、ジャンルA)
-     * 操作: book_genres への書き込みを失敗させた状態で、タイトルとジャンルを変更する PUT
+     * 操作: book_genre への書き込みを失敗させた状態で、タイトルとジャンルを変更する PUT
      * 期待: タイトルが「更新前のタイトル」のまま
      *
      * ジャンルをAからBへ入れ替えているのは、sync() に実際の書き込みを
@@ -162,7 +162,7 @@ class TransactionRollbackTest extends TestCase
         $book->genres()->attach($genreA);
 
         $this->withoutExceptionHandling();
-        $this->failOnWriteTo('book_genres');
+        $this->failOnWriteTo('book_genre');
 
         $this->assertOperationFailed(function () use ($user, $book, $genreB) {
             $this->actingAs($user)->put('/books/' . $book->id, [
@@ -183,7 +183,7 @@ class TransactionRollbackTest extends TestCase
      * API の書籍登録で、ジャンルの紐付けが失敗すると書籍も残らない。
      *
      * 前提: ユーザー1人、ジャンル1件。書籍は0冊
-     * 操作: book_genres への書き込みを失敗させた状態で POST /api/v1/books
+     * 操作:  への書き込みを失敗させた状態で POST /api/v1/books
      * 期待: books が0件のまま
      *
      * Web 版と同じ壊れ方だが、こちらは戻り値を
@@ -197,7 +197,7 @@ class TransactionRollbackTest extends TestCase
         $headers = $this->bearer($user);
 
         $this->withoutExceptionHandling();
-        $this->failOnWriteTo('book_genres');
+        $this->failOnWriteTo('book_genre');
 
         $this->assertOperationFailed(function () use ($genre, $headers) {
             $this->postJson('/api/v1/books', [
@@ -214,7 +214,7 @@ class TransactionRollbackTest extends TestCase
      * API の書籍更新で、ジャンルの貼り替えが失敗すると本文の更新も戻る。
      *
      * 前提: 自分の書籍1冊(タイトルは「更新前のタイトル」、ジャンルA)
-     * 操作: book_genres への書き込みを失敗させた状態で PUT /api/v1/books/{book}
+     * 操作: book_genre への書き込みを失敗させた状態で PUT /api/v1/books/{book}
      * 期待: タイトルが「更新前のタイトル」のまま
      */
     public function test_API書籍更新でジャンルの貼り替えが失敗するとタイトルの更新も取り消される(): void
@@ -231,7 +231,7 @@ class TransactionRollbackTest extends TestCase
         $book->genres()->attach($genreA);
 
         $this->withoutExceptionHandling();
-        $this->failOnWriteTo('book_genres');
+        $this->failOnWriteTo('book_genre');
 
         $this->assertOperationFailed(function () use ($book, $genreB, $headers) {
             $this->putJson('/api/v1/books/' . $book->id, [

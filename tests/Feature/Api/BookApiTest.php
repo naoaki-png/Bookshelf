@@ -373,7 +373,7 @@ class BookApiTest extends TestCase
             'title' => '新しい本',
             'user_id' => $user->id,
         ]);
-        $this->assertDatabaseHas('book_genres', [
+        $this->assertDatabaseHas('book_genre', [
             'book_id' => Book::where('title', '新しい本')->value('id'),
             'genre_id' => $genre->id,
         ]);
@@ -548,13 +548,13 @@ class BookApiTest extends TestCase
             ->assertNoContent();
 
         $this->assertDatabaseMissing('books', ['id' => $book->id]);
-        $this->assertDatabaseMissing('book_genres', ['book_id' => $book->id]);
+        $this->assertDatabaseMissing('book_genre', ['book_id' => $book->id]);
         $this->assertDatabaseMissing('book_users', ['id' => $bookUser->id]);
         $this->assertDatabaseMissing('reviews', ['id' => $review->id]);
         $this->assertDatabaseMissing('favorites', ['id' => $favorite->id]);
 
         $this->assertDatabaseHas('books', ['id' => $survivor->id]);
-        $this->assertDatabaseHas('book_genres', ['book_id' => $survivor->id]);
+        $this->assertDatabaseHas('book_genre', ['book_id' => $survivor->id]);
         $this->assertDatabaseHas('book_users', ['id' => $survivorBookUser->id]);
         $this->assertDatabaseHas('reviews', ['id' => $survivorReview->id]);
         $this->assertDatabaseHas('favorites', ['id' => $survivorFavorite->id]);

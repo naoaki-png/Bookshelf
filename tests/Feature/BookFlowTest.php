@@ -14,7 +14,7 @@ use Tests\TestCase;
  *
  * このファイルで見ているのは次の3点。
  *   1. DB が意図したとおりに変わったか
- *   2. 中間テーブル(book_genres)が意図したとおりに変わったか
+ *   2. 中間テーブル(book_genre)が意図したとおりに変わったか
  *   3. 正しい画面へリダイレクトされたか
  *
  * 「200 が返ったか」ではなく「DB がどう変わったか」を主にしているのは、
@@ -30,7 +30,7 @@ class BookFlowTest extends TestCase
      *
      * 前提: ユーザー1人、ジャンル2件。書籍はまだ0冊
      * 操作: すべての項目を正しく埋めて POST /books
-     * 期待: books に1行 / user_id が投稿者本人 / book_genres に2行 /
+     * 期待: books に1行 / user_id が投稿者本人 / book_genre に2行 /
      *       登録した書籍の詳細へリダイレクト + 「書籍を登録しました。」
      *
      * user_id を検証している理由:
@@ -83,9 +83,9 @@ class BookFlowTest extends TestCase
 
         // 中間テーブルは「2行あること」と「その2行が選んだジャンルであること」を分けて見る。
         // 件数だけだと、別のジャンル id が2件入っていても通ってしまう。
-        $this->assertDatabaseCount('book_genres', 2);
-        $this->assertDatabaseHas('book_genres', ['book_id' => $book->id, 'genre_id' => $genreA->id]);
-        $this->assertDatabaseHas('book_genres', ['book_id' => $book->id, 'genre_id' => $genreB->id]);
+        $this->assertDatabaseCount('book_genre', 2);
+        $this->assertDatabaseHas('book_genre', ['book_id' => $book->id, 'genre_id' => $genreA->id]);
+        $this->assertDatabaseHas('book_genre', ['book_id' => $book->id, 'genre_id' => $genreB->id]);
     }
 
     /**
@@ -93,7 +93,7 @@ class BookFlowTest extends TestCase
      *
      * 前提: 自分の書籍1冊にジャンルA・Bが紐づいている。別にジャンルCも存在する
      * 操作: タイトルと著者を書き換え、ジャンルは C だけを選んで PUT /books/{book}
-     * 期待: books の内容が変わる / book_genres は C の1行だけになる /
+     * 期待: books の内容が変わる / book_genre は C の1行だけになる /
      *       books.show へリダイレクト + 「書籍情報を更新しました。」
      *
      * 「Cが入ったこと」だけでなく「A・Bが消えたこと」を見ている理由:
@@ -139,10 +139,10 @@ class BookFlowTest extends TestCase
         ]);
 
         // 選び直しの結果、この書籍に紐づくジャンルは C ただ1件になる。
-        $this->assertDatabaseCount('book_genres', 1);
-        $this->assertDatabaseHas('book_genres', ['book_id' => $book->id, 'genre_id' => $genreC->id]);
-        $this->assertDatabaseMissing('book_genres', ['book_id' => $book->id, 'genre_id' => $genreA->id]);
-        $this->assertDatabaseMissing('book_genres', ['book_id' => $book->id, 'genre_id' => $genreB->id]);
+        $this->assertDatabaseCount('book_genre', 1);
+        $this->assertDatabaseHas('book_genre', ['book_id' => $book->id, 'genre_id' => $genreC->id]);
+        $this->assertDatabaseMissing('book_genre', ['book_id' => $book->id, 'genre_id' => $genreA->id]);
+        $this->assertDatabaseMissing('book_genre', ['book_id' => $book->id, 'genre_id' => $genreB->id]);
     }
 
     /**

@@ -10,7 +10,7 @@ use Tests\TestCase;
 /**
  * 書籍とジャンルの多対多リレーションを確認する。
  *
- * books と genres は book_genres を介した多対多で、
+ * books と genres は book_genre を介した多対多で、
  * 書籍側からは Book::genres()、ジャンル側からは Genre::books() で辿る。
  * 両方向から確認しているのは、片側の定義だけが正しくても、
  * もう片側の中間テーブル名や外部キーが誤っていると気づけないため。
