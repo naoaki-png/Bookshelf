@@ -6,7 +6,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -47,16 +46,6 @@ class User extends Authenticatable
     ];
 
     /**
-     * このユーザーと書籍の紐付けを保持する中間テーブルの行。
-     *
-     * @return HasMany
-     */
-    public function bookUsers(): HasMany
-    {
-        return $this->hasMany(BookUser::class);
-    }
-
-    /**
      * このユーザーがいいねしたレビューの紐付けを保持する中間テーブルの行。
      *
      * @return HasMany
@@ -69,20 +58,11 @@ class User extends Authenticatable
     /**
      * このユーザーのレビュー。
      *
-     * BookUserを経由してreviewsテーブルにアクセスする。
-     *
-     * @return HasManyThrough
+     * @return HasMany
      */
-    public function reviews(): HasManyThrough
+    public function reviews(): HasMany
     {
-        return $this->hasManyThrough(
-            Review::class,
-            BookUser::class,
-            'user_id',
-            'book_user_id',
-            'id',
-            'id'
-        );
+        return $this->hasMany(Review::class);
     }
 
     /**

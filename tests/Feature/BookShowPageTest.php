@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Review;
 use App\Models\ReviewLike;
 use App\Models\User;
@@ -42,18 +41,13 @@ class BookShowPageTest extends TestCase
     /**
      * 指定した書籍にレビューを1件付ける。
      *
-     * reviews は book_users を経由して books にぶら下がっているため、
-     * 中間の行を先に作る必要がある。
+     * 投稿者と対象書籍は reviews が直接持つので、この1回の create で足りる。
      */
     private function reviewOn(Book $book, User $author): Review
     {
-        $bookUser = BookUser::factory()->create([
+        return Review::factory()->create([
             'user_id' => $author->id,
             'book_id' => $book->id,
-        ]);
-
-        return Review::factory()->create([
-            'book_user_id' => $bookUser->id,
             'rating' => 5,
             'comment' => 'テスト用のレビュー本文',
         ]);

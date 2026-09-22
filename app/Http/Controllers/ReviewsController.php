@@ -4,11 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ReviewRequest;
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Review;
 use Auth;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ReviewsController extends Controller
@@ -16,8 +14,7 @@ class ReviewsController extends Controller
     /**
      * レビューを投稿する。
      *
-     * 読書記録(book_users)が無ければ作成し、そこにレビューを紐付ける。
-     * 2つの書き込みが揃って初めて意味を持つため、1つのトランザクションで扱う。
+     * 投稿者と対象書籍を添えて、レビューを1件作る。
      *
      * @param  ReviewRequest  $request
      * @param  Book  $book
@@ -27,14 +24,9 @@ class ReviewsController extends Controller
     {
         $data = $request->only('rating', 'comment');
         $user = Auth::user();
-        DB::transaction(function () use ($data, $user, $book) {
-            $bookUser = BookUser::firstOrCreate([
-                'user_id' => $user->id,
-                'book_id' => $book->id,
-            ]);
-            $data['book_user_id'] = $bookUser->id;
-            Review::create($data);
-        });
+        $data['user_id'] = $user->id;
+        $data['book_id'] = $book->id;
+        Review::create($data);
 
         return redirect(route('books.show', $book))->with('success', 'レビューを投稿しました。');
     }
@@ -48,7 +40,6 @@ class ReviewsController extends Controller
     public function edit(Review $review): View
     {
         $this->authorize('update', $review);
-        $review->book = $review->bookUser->book;
 
         return view('reviews.edit', compact('review'));
     }
@@ -67,7 +58,7 @@ class ReviewsController extends Controller
         $this->authorize('update', $review);
         $data = $request->only('rating', 'comment');
         $review->update($data);
-        $book = $review->bookUser->book;
+        $book = $review->book;
 
         return redirect(route('books.show', $book))->with('success', 'レビューを更新しました。');
     }
@@ -81,7 +72,7 @@ class ReviewsController extends Controller
     public function destroy(Review $review): RedirectResponse
     {
         $this->authorize('delete', $review);
-        $book = $review->bookUser->book;
+        $book = $review->book;
         $review->delete();
 
         return redirect(route('books.show', $book))->with('success', 'レビューを削除しました。');
@@ -105,7 +96,7 @@ class ReviewsController extends Controller
         } else {
             $user->reviewLikes()->create(['review_id' => $review->id]);
         }
-        $book = $review->bookUser->book;
+        $book = $review->book;
 
         return redirect(route('books.show', $book));
     }

@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Review;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,10 +12,8 @@ use Tests\TestCase;
  * レビューの投稿・更新・削除・いいねが、ログイン済みユーザーの
  * 正しい操作で最後まで完走することを確認する(正常系)。
  *
- * このアプリのレビューは books に直接ぶら下がっていない。
- * users --- book_users --- reviews という構造で、book_users が
- * 「この人がこの本を読んだ」という1行を表している。
- * そのため投稿のテストでは reviews だけでなく book_users も見る必要がある。
+ * reviews は投稿者と対象書籍を user_id / book_id として直接持つ。
+ * そのため投稿の検証は reviews の1行を見れば足りる。
  */
 class ReviewFlowTest extends TestCase
 {
@@ -25,16 +22,16 @@ class ReviewFlowTest extends TestCase
     /**
      * ログイン済みユーザーが書籍にレビューを投稿できる。
      *
-     * 前提: ユーザー1人、書籍1冊。レビューも book_users もまだ0行
+     * 前提: ユーザー1人、書籍1冊。レビューはまだ0行
      * 操作: 正しい rating と comment で POST /books/{book}/reviews
-     * 期待: reviews に1行 / book_users にも1行できる /
+     * 期待: reviews に1行 /
      *       books.show へリダイレクト + 「レビューを投稿しました。」
      *
-     * book_users を見ている理由:
-     * ReviewsController@store は、投稿者と書籍の組み合わせで BookUser を
-     * 用意してから、その id を reviews.book_user_id に入れている。
-     * レビューだけ増えて book_users の中身(user_id / book_id)が
-     * 間違っていると、「誰のレビューか」の判定が全部ずれる。
+     * user_id と book_id まで見ている理由:
+     * rating と comment だけを見ると、「誰の、どの本への」レビューかが
+     * 入れ替わっていても通ってしまう。ReviewsController@store は
+     * ログイン中のユーザーとルートの書籍をこの2列に入れているので、
+     * そこが正しいことまで含めて1行で確かめる。
      */
     public function test_ログイン済みユーザーは書籍にレビューを投稿できる(): void
     {
@@ -49,36 +46,33 @@ class ReviewFlowTest extends TestCase
             ->assertRedirect(route('books.show', $book))
             ->assertSessionHas('success', 'レビューを投稿しました。');
 
-        $this->assertDatabaseHas('book_users', [
+        $this->assertDatabaseHas('reviews', [
             'user_id' => $user->id,
             'book_id' => $book->id,
-        ]);
-
-        $bookUser = BookUser::where('user_id', $user->id)->where('book_id', $book->id)->first();
-        $this->assertDatabaseHas('reviews', [
-            'book_user_id' => $bookUser->id,
             'rating' => 4,
             'comment' => '投稿したレビューのコメント',
         ]);
+        $this->assertDatabaseCount('reviews', 1);
     }
 
     /**
-     * 同じ人が同じ本にレビューを2回投稿しても、book_users は1行のまま増えない。
+     * 同じ人が同じ本に2回レビューすると、詳細ページに2件とも表示される。
      *
      * 前提: ユーザー1人、書籍1冊。まだレビューは無い
      * 操作: 同じユーザーで同じ本に、内容の違うレビューを2回 POST する
-     * 期待: reviews は2行 / book_users は1行
+     * 期待: reviews が2行 / 書籍詳細ページに2件とも出る
      *
-     * ReviewsController@store は BookUser を firstOrCreate で取っている。
-     * create だと2回目で book_users の unique(['user_id','book_id']) に当たって
-     * 落ちるため、この1行が仕様として効いている。
-     * 「2行になっていないこと」を見ないと、この firstOrCreate が create に
-     * 書き換わっても気づけない。
+     * このテストが縛っているのは「reviews に unique(user_id, book_id) を
+     * 張らない」という設計判断。要件シート シート11 DR04 はレビューに
+     * ユニーク制約を求めていない —— 必要な箇所(DR01 の ISBN、DR02 の
+     * ジャンル名、DR07 のメールアドレス)には「(ユニーク)」と明記されている。
      *
-     * rating を 3 と 5 で分けているのは、2件目が1件目の上書きではなく
-     * 別レコードとして増えたことを、件数以外からも確認できるようにするため。
+     * DB の件数だけでなく画面まで見ているのは、制約を足されたときに
+     * 2件目の POST が落ちて表示が1件に減ることまで拾うため。
+     * コメントを別々にしているのは、assertSee が「その文字列があるか」しか
+     * 見ないので、2件とも同じ文面だと1件しか出ていなくても通ってしまうから。
      */
-    public function test_同じ本に2回レビューしてもbook_usersは1行のまま(): void
+    public function test_同じ本に2回レビューすると詳細ページに2件とも表示される(): void
     {
         $user = User::factory()->create();
         $book = Book::factory()->create();
@@ -97,7 +91,12 @@ class ReviewFlowTest extends TestCase
             ]);
 
         $this->assertDatabaseCount('reviews', 2);
-        $this->assertDatabaseCount('book_users', 1);
+
+        $this->actingAs($user)
+            ->get(route('books.show', $book))
+            ->assertOk()
+            ->assertSee('1件目のレビュー')
+            ->assertSee('2件目のレビュー');
     }
 
     /**
@@ -110,7 +109,7 @@ class ReviewFlowTest extends TestCase
      *
      * リダイレクト先を見ている理由:
      * 更新後に「どこへ戻すか」もコントローラーが決めている仕様の一部で、
-     * $review->bookUser->book をたどって戻り先の書籍を組み立てている。
+     * $review->book をたどって戻り先の書籍を組み立てている。
      * このたどり方が壊れると 500 になるため、リダイレクト先の検証が
      * そのままリレーションの検証を兼ねる。
      *
@@ -126,12 +125,9 @@ class ReviewFlowTest extends TestCase
     {
         $user = User::factory()->create();
         $book = Book::factory()->create();
-        $bookUser = BookUser::factory()->create([
+        $review = Review::factory()->create([
             'user_id' => $user->id,
             'book_id' => $book->id,
-        ]);
-        $review = Review::factory()->create([
-            'book_user_id' => $bookUser->id,
             'rating' => 2,
             'comment' => '更新前のコメント',
         ]);
@@ -162,22 +158,23 @@ class ReviewFlowTest extends TestCase
      *
      * 他人のレビューを1件置いている理由は書籍の削除テストと同じで、
      * 消しすぎを同時に検出するため。
-     * 同じ書籍に付けているのは、book_users が別々の行になることで
-     * 「1冊に複数人のレビュー」という実際の使われ方に近くなるから。
+     * 同じ書籍に付けているのは「1冊に複数人のレビュー」という
+     * 実際の使われ方に近くなるから。
      */
     public function test_投稿者は自分のレビューを削除できる(): void
     {
         $user = User::factory()->create();
+        $other = User::factory()->create();
         $book = Book::factory()->create();
 
-        $myBookUser = BookUser::factory()->create(['user_id' => $user->id, 'book_id' => $book->id]);
-        $myReview = Review::factory()->create(['book_user_id' => $myBookUser->id]);
-
-        $othersBookUser = BookUser::factory()->create([
-            'user_id' => User::factory()->create()->id,
+        $myReview = Review::factory()->create([
+            'user_id' => $user->id,
             'book_id' => $book->id,
         ]);
-        $othersReview = Review::factory()->create(['book_user_id' => $othersBookUser->id]);
+        $othersReview = Review::factory()->create([
+            'user_id' => $other->id,
+            'book_id' => $book->id,
+        ]);
 
         $this->actingAs($user)
             ->delete('/reviews/' . $myReview->id)
@@ -209,11 +206,10 @@ class ReviewFlowTest extends TestCase
     {
         $user = User::factory()->create();
         $book = Book::factory()->create();
-        $bookUser = BookUser::factory()->create([
+        $review = Review::factory()->create([
             'user_id' => User::factory()->create()->id,
             'book_id' => $book->id,
         ]);
-        $review = Review::factory()->create(['book_user_id' => $bookUser->id]);
 
         // 1回目 -- いいねが付く
         $this->actingAs($user)

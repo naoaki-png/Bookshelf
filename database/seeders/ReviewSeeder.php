@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Review;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -31,15 +30,10 @@ class ReviewSeeder extends Seeder
             $reviewers = $users->random($reviewCount);
 
             foreach ($reviewers as $user) {
-                $bookUser = BookUser::firstOrCreate([
+                $rating = rand(1, 5);
+                Review::create([
                     'user_id' => $user->id,
                     'book_id' => $book->id,
-                ]);
-
-                $rating = rand(1, 5);
-
-                Review::create([
-                    'book_user_id' => $bookUser->id,
                     'rating' => $rating,
                     'comment' => $comments[$rating],
                 ]);

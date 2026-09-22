@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Genre;
 use App\Models\Review;
 use App\Models\User;
@@ -63,13 +62,12 @@ class AuthorizationTest extends TestCase
             ->assertForbidden();
     }
 
-    // reviews - 所有者は review->bookUser->user_id
+    // reviews - 所有者は review->user_id
 
     public function test_他人のレビューの編集画面は403になる(): void
     {
         $owner = User::factory()->create();
-        $bookUser = BookUser::factory()->create(['user_id' => $owner->id]);
-        $review = Review::factory()->create(['book_user_id' => $bookUser->id]);
+        $review = Review::factory()->create(['user_id' => $owner->id]);
 
         $this->actingAs(User::factory()->create())
             ->get('/reviews/' . $review->id . '/edit')
@@ -79,8 +77,7 @@ class AuthorizationTest extends TestCase
     public function test_他人のレビューを更新すると403になる(): void
     {
         $owner = User::factory()->create();
-        $bookUser = BookUser::factory()->create(['user_id' => $owner->id]);
-        $review = Review::factory()->create(['book_user_id' => $bookUser->id]);
+        $review = Review::factory()->create(['user_id' => $owner->id]);
 
         $this->actingAs(User::factory()->create())
             ->put('/reviews/' . $review->id, [
@@ -93,8 +90,7 @@ class AuthorizationTest extends TestCase
     public function test_他人のレビューを削除すると403になる(): void
     {
         $owner = User::factory()->create();
-        $bookUser = BookUser::factory()->create(['user_id' => $owner->id]);
-        $review = Review::factory()->create(['book_user_id' => $bookUser->id]);
+        $review = Review::factory()->create(['user_id' => $owner->id]);
 
         $this->actingAs(User::factory()->create())
             ->delete('/reviews/' . $review->id)
