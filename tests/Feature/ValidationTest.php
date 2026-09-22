@@ -214,8 +214,6 @@ class ValidationTest extends TestCase
             ->assertInvalid(['comment']);
 
         $this->assertDatabaseCount('reviews', 0);
-        // 投稿が止まっているので、book_users も作られていないこと
-        $this->assertDatabaseCount('book_users', 0);
     }
 
     /**

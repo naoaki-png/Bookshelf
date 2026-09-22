@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Genre;
 use App\Models\Review;
 use App\Models\User;
@@ -26,9 +25,9 @@ use Tests\TestCase;
  * 構造上の注意が2つある。
  *
  * 1. 同じ本に複数のレビューが付く。
- *    users --- book_users --- reviews で、book_users 1行に reviews が何行でもぶら下がる。
- *    そのため top_rated_books は書籍単位にまとめないと同じ本が並ぶ。
- *    重複したときの rating は「最高評価」を採る仕様。
+ *    reviews に unique(user_id, book_id) は張っていないので、同じ人が
+ *    同じ本に何件でも書ける。そのため top_rated_books は書籍単位に
+ *    まとめないと同じ本が並ぶ。重複したときの rating は「最高評価」を採る仕様。
  *
  * 2. 1件のレビューが複数のジャンルに数えられる。
  *    books --- book_genre --- genres の多対多なので、2ジャンル持つ本の
@@ -42,19 +41,14 @@ class ReportsControllerTest extends TestCase
     /**
      * 指定ユーザーの、指定書籍に対するレビューを1件作る。
      *
-     * book_users は「この人がこの本を読んだ」の1行なので、
-     * 同じ組み合わせで2回目を作らないよう firstOrCreate で使い回す。
-     * ここを create にすると同じ本が2冊読んだ扱いになり、books_read がずれる。
+     * books_read は $reviews->pluck('book_id')->unique() で数えているので、
+     * 同じ組み合わせを2回渡しても1冊として数えられる。
      */
     private function reviewFor(User $user, Book $book, int $rating): Review
     {
-        $bookUser = BookUser::firstOrCreate([
+        return Review::factory()->create([
             'user_id' => $user->id,
             'book_id' => $book->id,
-        ]);
-
-        return Review::factory()->create([
-            'book_user_id' => $bookUser->id,
             'rating' => $rating,
         ]);
     }

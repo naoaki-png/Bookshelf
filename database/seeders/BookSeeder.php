@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Genre;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -47,11 +46,6 @@ class BookSeeder extends Seeder
 
             $genreIds = Genre::whereIn('name', $data['genres'])->pluck('id');
             $book->genres()->sync($genreIds);
-
-            BookUser::firstOrCreate([
-                'user_id' => $owner->id,
-                'book_id' => $book->id,
-            ]);
         }
     }
 }

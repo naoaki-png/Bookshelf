@@ -153,9 +153,7 @@
                                             </div>
                                             <span class="text-sm text-gray-500">{{ $review->created_at->format('Y/m/d') }}</span>
                                         </div>
-                                        @if($review->comment)
-                                            <p class="text-gray-700">{{ $review->comment }}</p>
-                                        @endif
+                                        <p class="text-gray-700">{{ $review->comment }}</p>
 
                                         <div class="mt-3 flex items-center justify-between">
                                             <!-- いいねボタン -->

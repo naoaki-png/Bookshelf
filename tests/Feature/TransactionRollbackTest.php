@@ -14,12 +14,14 @@ use Tests\TestCase;
  * 書き込みを2回行う処理が、途中で失敗したときに
  * 1回目の書き込みまで取り消されることを確認する。
  *
- * 対象は DB::transaction を適用した5箇所。
- *   1. BooksController@store        books      → book_genre
- *   2. BooksController@update       books      → book_genre
- *   3. ApiBookController@store      books      → book_genre
- *   4. ApiBookController@update     books      → book_genre
- *   5. ReviewsController@store      book_users → reviews
+ * 対象は DB::transaction を適用した4箇所。
+ *   1. BooksController@store        books → book_genre
+ *   2. BooksController@update       books → book_genre
+ *   3. ApiBookController@store      books → book_genre
+ *   4. ApiBookController@update     books → book_genre
+ *
+ * ReviewsController@store は #92 で書き込みが Review::create() の1文になり、
+ * 取り消す対象が無くなったためトランザクションごと外した。
  *
  * 【失敗をどう起こしているか】
  *
@@ -244,41 +246,6 @@ class TransactionRollbackTest extends TestCase
         $this->assertDatabaseHas('books', [
             'id' => $book->id,
             'title' => '更新前のタイトル',
-        ]);
-    }
-
-    /**
-     * レビュー投稿で、レビューの保存が失敗すると book_users の行も残らない。
-     *
-     * 前提: ユーザー1人、他人の書籍1冊。この2人の組み合わせの book_users は0件
-     * 操作: reviews への書き込みを失敗させた状態で POST /books/{book}/reviews
-     * 期待: book_users にも reviews にも行が残らない
-     *
-     * この箇所だけ書き込む表の組み合わせが違う。
-     * firstOrCreate が作る book_users の行は、レビューが付いて初めて意味を持つ。
-     * 取り消されないと、誰からも参照されない行が残り続ける。
-     */
-    public function test_レビュー投稿で保存が失敗すると中間テーブルの行も残らない(): void
-    {
-        $user = User::factory()->create();
-        $book = Book::factory()->create();
-
-        $this->withoutExceptionHandling();
-        $this->failOnWriteTo('reviews');
-
-        $this->assertOperationFailed(function () use ($user, $book) {
-            $this->actingAs($user)->post('/books/' . $book->id . '/reviews', [
-                'rating' => 5,
-                'comment' => 'ロールバックされるはずのレビュー',
-            ]);
-        });
-
-        $this->assertDatabaseMissing('book_users', [
-            'user_id' => $user->id,
-            'book_id' => $book->id,
-        ]);
-        $this->assertDatabaseMissing('reviews', [
-            'comment' => 'ロールバックされるはずのレビュー',
         ]);
     }
 }

@@ -20,19 +20,19 @@ class ReportsController extends Controller
         $user = Auth::user();
 
         $reviews = $user->reviews()
-            ->with('bookUser.book.genres')
+            ->with('book.genres')
             ->get();
 
         $stats = [
             'summary' => [
                 'total_reviews' => $reviews->count(),
-                'books_read' => $reviews->pluck('bookUser.book_id')->unique()->count(),
+                'books_read' => $reviews->pluck('book_id')->unique()->count(),
                 'average_rating' => $reviews->avg('rating') ?? 0,
             ],
             'rating_distribution' => collect(range(1, 5))->map(fn ($star) => $reviews->where('rating', $star)->count()),
             // 仕様: 4星以上を対象に、評価の高い順で上位5件。[id, title, author, rating] の配列で返す。
-            'top_rated_books' => $reviews->where('rating', '>=', 4)->groupBy('bookUser.book_id')->map(function ($group) {
-                $book = $group->first()->bookUser->book;
+            'top_rated_books' => $reviews->where('rating', '>=', 4)->groupBy('book_id')->map(function ($group) {
+                $book = $group->first()->book;
 
                 return [
                     'id' => $book->id,
@@ -43,7 +43,7 @@ class ReportsController extends Controller
             })->sortByDesc('rating')->take(5)->values(),
             // 仕様: ジャンル未設定の書籍は除外し、平均評価の高い順で上位5件。[id, name, count, average_rating] の配列で返す。
             'genre_ratings' => $reviews->flatMap(function ($review) {
-                return $review->bookUser->book->genres->map(
+                return $review->book->genres->map(
                     function ($genre) use ($review) {
                         return [
                             'id' => $genre->id,

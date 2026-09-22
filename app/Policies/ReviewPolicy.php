@@ -37,7 +37,7 @@ class ReviewPolicy
      */
     public function update(User $user, Review $review): bool
     {
-        return $user->id === $review->bookUser->user_id;
+        return $user->id === $review->user_id;
         //
     }
 
@@ -46,7 +46,7 @@ class ReviewPolicy
      */
     public function delete(User $user, Review $review): bool
     {
-        return $user->id === $review->bookUser->user_id;
+        return $user->id === $review->user_id;
         //
     }
 

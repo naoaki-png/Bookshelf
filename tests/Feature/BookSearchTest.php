@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Genre;
 use App\Models\Review;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,15 +45,13 @@ class BookSearchTest extends TestCase
     /**
      * 書籍にレビューを付ける。
      *
-     * reviews は books に直接ぶら下がっておらず、book_users を経由する
-     * (Book::reviews() が hasManyThrough)。テストのたびに
-     * BookUser → Review の2段を書くと本題が埋もれるのでまとめた。
+     * 評価値を並べるだけで必要な件数を作れるようにして、
+     * 本題(並び順・絞り込み)から目が逸れないようにまとめてある。
      */
     private function giveRatings(Book $book, int ...$ratings): void
     {
         foreach ($ratings as $rating) {
-            $bookUser = BookUser::factory()->create(['book_id' => $book->id]);
-            Review::factory()->create(['book_user_id' => $bookUser->id, 'rating' => $rating]);
+            Review::factory()->create(['book_id' => $book->id, 'rating' => $rating]);
         }
     }
 

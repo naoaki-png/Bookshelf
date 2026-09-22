@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Review;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -53,23 +52,18 @@ class BooksControllerTest extends TestCase
     public function test_書籍一覧に平均評価点が表示される(): void
     {
         $book = Book::factory()->create(['created_at' => now()->subDays(1)]);
-        $bookUser = BookUser::factory()->create(['book_id' => $book->id]);
-        Review::factory()->create(['book_user_id' => $bookUser->id, 'rating' => 3]);
-        $bookUser = BookUser::factory()->create(['book_id' => $book->id]);
-        Review::factory()->create(['book_user_id' => $bookUser->id, 'rating' => 4]);
-        $bookUser = BookUser::factory()->create(['book_id' => $book->id]);
-        Review::factory()->create(['book_user_id' => $bookUser->id, 'rating' => 5]);
+        foreach ([3, 4, 5] as $rating) {
+            Review::factory()->create(['book_id' => $book->id, 'rating' => $rating]);
+        }
 
         $book = Book::factory()->create(['created_at' => now()->subDays(2)]);
-        $bookUser = BookUser::factory()->create(['book_id' => $book->id]);
-        Review::factory()->create(['book_user_id' => $bookUser->id, 'rating' => 1]);
-        $bookUser = BookUser::factory()->create(['book_id' => $book->id]);
-        Review::factory()->create(['book_user_id' => $bookUser->id, 'rating' => 2]);
-        $bookUser = BookUser::factory()->create(['book_id' => $book->id]);
-        Review::factory()->create(['book_user_id' => $bookUser->id, 'rating' => 3]);
+        foreach ([1, 2, 3] as $rating) {
+            Review::factory()->create(['book_id' => $book->id, 'rating' => $rating]);
+        }
 
-        $book = Book::factory()->create(['created_at' => now()->subDays(3)]);
-        $bookUser = BookUser::factory()->create(['book_id' => $book->id]);
+        // 3冊目はレビュー無し。withAvg が null を返すことを確かめるため。
+        Book::factory()->create(['created_at' => now()->subDays(3)]);
+
         $response = $this->get('/books');
         $response->assertViewHas('books', function ($viewBooks) {
             return $viewBooks->pluck('reviews_avg_rating')->all() === [4.0, 2.0, null];

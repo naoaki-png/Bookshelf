@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Review;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,10 +26,8 @@ use Tests\TestCase;
  *    ランキングは「みんなの評価」なので、/reports(自分だけ)とは集計範囲が逆。
  *    ここを取り違えると、ログインしている人によってランキングが変わる。
  *
- * 3. reviews は hasManyThrough(Review, BookUser)。
- *    books --- book_users --- reviews と2段になっているため、
- *    レビューを作るには先に book_users の行が要る。
- *    同じ人が同じ本に2件レビューを書く場合は book_users を使い回す。
+ * 3. reviews は hasMany。books の id を reviews.book_id が直接指す。
+ *    同じ人が同じ本に2件書いても、独立した2行として平均に入る。
  */
 class RankingTest extends TestCase
 {
@@ -39,18 +36,13 @@ class RankingTest extends TestCase
     /**
      * 指定ユーザーの、指定書籍に対するレビューを1件作る。
      *
-     * book_users は「この人がこの本を読んだ」の1行なので firstOrCreate で使い回す。
      * ReportsControllerTest と同じ形にそろえてある。
      */
     private function reviewFor(User $user, Book $book, int $rating): Review
     {
-        $bookUser = BookUser::firstOrCreate([
+        return Review::factory()->create([
             'user_id' => $user->id,
             'book_id' => $book->id,
-        ]);
-
-        return Review::factory()->create([
-            'book_user_id' => $bookUser->id,
             'rating' => $rating,
         ]);
     }

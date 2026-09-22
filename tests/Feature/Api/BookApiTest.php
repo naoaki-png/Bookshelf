@@ -3,7 +3,6 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Book;
-use App\Models\BookUser;
 use App\Models\Favorite;
 use App\Models\Genre;
 use App\Models\Review;
@@ -106,8 +105,7 @@ class BookApiTest extends TestCase
         $book->genres()->attach($genre);
 
         foreach ([3, 5] as $rating) {
-            $bookUser = BookUser::factory()->create(['book_id' => $book->id]);
-            Review::factory()->create(['book_user_id' => $bookUser->id, 'rating' => $rating]);
+            Review::factory()->create(['book_id' => $book->id, 'rating' => $rating]);
         }
 
         $response = $this->getJson(self::BASE);
@@ -304,9 +302,9 @@ class BookApiTest extends TestCase
     /**
      * 要件「ジャンル情報とレビュー(投稿者名・評価・コメント・投稿日時)を含めること」の確認。
      *
-     * レビューは book_users を経由した hasManyThrough で取っており、
-     * 投稿者名は Review::user()(hasOneThrough)からさらに引いている。
-     * 中間テーブルを2つ跨いで名前まで届くことを、ここで一度だけ通しで確かめる。
+     * レビューは Book::reviews()(hasMany)で取り、投稿者名は
+     * Review::user()(belongsTo)から引いている。
+     * 書籍からレビュー、レビューから投稿者名まで届くことを一度だけ通しで確かめる。
      */
     public function test_詳細にジャンルとレビューが含まれる(): void
     {
@@ -316,9 +314,9 @@ class BookApiTest extends TestCase
         $book = Book::factory()->create();
         $book->genres()->attach($genre);
 
-        $bookUser = BookUser::factory()->create(['book_id' => $book->id, 'user_id' => $reviewer->id]);
         Review::factory()->create([
-            'book_user_id' => $bookUser->id,
+            'book_id' => $book->id,
+            'user_id' => $reviewer->id,
             'rating' => 4,
             'comment' => 'おもしろかった',
         ]);
@@ -520,8 +518,8 @@ class BookApiTest extends TestCase
      * 要件「関連データ(レビュー・お気に入り・ジャンル紐付け)も適切に処理されること」の確認。
      *
      * 関連の削除は DB の ON DELETE CASCADE が担っている。
-     * reviews は books を直接参照しておらず、books → book_users → reviews と
-     * 2段でカスケードするため、そこまで届くかを実データで確かめる必要がある。
+     * reviews.book_id が books を直接参照するようになった(#92)ので鎖は1段だが、
+     * 制約の張り忘れはアプリ側に何のエラーも出さないため、実データで確かめる。
      *
      * 巻き添えになってはいけない書籍を1冊置いているのが要点。
      * 「消えたこと」だけを見ると、全部消す実装でもテストは通ってしまう。
@@ -534,14 +532,12 @@ class BookApiTest extends TestCase
 
         $book = Book::factory()->create(['user_id' => $owner->id]);
         $book->genres()->attach($genre);
-        $bookUser = BookUser::factory()->create(['book_id' => $book->id, 'user_id' => $owner->id]);
-        $review = Review::factory()->create(['book_user_id' => $bookUser->id]);
+        $review = Review::factory()->create(['book_id' => $book->id, 'user_id' => $owner->id]);
         $favorite = Favorite::factory()->create(['book_id' => $book->id, 'user_id' => $owner->id]);
 
         $survivor = Book::factory()->create(['user_id' => $owner->id]);
         $survivor->genres()->attach($genre);
-        $survivorBookUser = BookUser::factory()->create(['book_id' => $survivor->id, 'user_id' => $owner->id]);
-        $survivorReview = Review::factory()->create(['book_user_id' => $survivorBookUser->id]);
+        $survivorReview = Review::factory()->create(['book_id' => $survivor->id, 'user_id' => $owner->id]);
         $survivorFavorite = Favorite::factory()->create(['book_id' => $survivor->id, 'user_id' => $owner->id]);
 
         $this->deleteJson(self::BASE . '/' . $book->id, [], $this->bearer($owner))
@@ -549,13 +545,11 @@ class BookApiTest extends TestCase
 
         $this->assertDatabaseMissing('books', ['id' => $book->id]);
         $this->assertDatabaseMissing('book_genre', ['book_id' => $book->id]);
-        $this->assertDatabaseMissing('book_users', ['id' => $bookUser->id]);
         $this->assertDatabaseMissing('reviews', ['id' => $review->id]);
         $this->assertDatabaseMissing('favorites', ['id' => $favorite->id]);
 
         $this->assertDatabaseHas('books', ['id' => $survivor->id]);
         $this->assertDatabaseHas('book_genre', ['book_id' => $survivor->id]);
-        $this->assertDatabaseHas('book_users', ['id' => $survivorBookUser->id]);
         $this->assertDatabaseHas('reviews', ['id' => $survivorReview->id]);
         $this->assertDatabaseHas('favorites', ['id' => $survivorFavorite->id]);
     }

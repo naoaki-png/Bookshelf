@@ -14,28 +14,19 @@ class ReviewLikeSeeder extends Seeder
     public function run(): void
     {
         $users = User::all();
-        $reviews = Review::with('bookUser')->get();
-
+        $reviews = Review::get();
         foreach ($reviews as $review) {
-            $authorId = $review->bookUser->user_id;
-
+            $authorId = $review->user_id;
             $candidateUsers = $users->reject(fn ($user) => $user->id === $authorId);
-
             $likeCount = rand(0, 3);
-
             if ($likeCount === 0) {
                 continue;
             }
-
             $likeCount = min($likeCount, $candidateUsers->count());
-
             $likers = $candidateUsers->random($likeCount);
-
             foreach ($likers as $user) {
                 $user->likedReviews()->syncWithoutDetaching([$review->id]);
             }
         }
-
-        //
     }
 }

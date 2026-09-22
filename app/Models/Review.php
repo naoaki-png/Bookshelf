@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Review extends Model
 {
@@ -19,38 +18,30 @@ class Review extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'book_user_id',
+        'user_id',
+        'book_id',
         'rating',
         'comment',
     ];
 
     /**
-     * このレビューがどの book_users の行に属しているか。
+     * このレビューを投稿したユーザー。
      *
      * @return BelongsTo
      */
-    public function bookUser(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(BookUser::class);
+        return $this->belongsTo(User::class);
     }
 
     /**
-     * このレビューを投稿したユーザー。
+     * このレビューの対象となった書籍。
      *
-     * BookUserを経由してusersテーブルにアクセスする。
-     *
-     * @return HasOneThrough
+     * @return BelongsTo
      */
-    public function user(): HasOneThrough
+    public function book(): BelongsTo
     {
-        return $this->hasOneThrough(
-            User::class,
-            BookUser::class,
-            'id',
-            'id',
-            'book_user_id',
-            'user_id'
-        );
+        return $this->belongsTo(Book::class);
     }
 
     /**
