@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Book;
+use App\Models\Genre;
 use App\Models\Review;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -68,5 +70,54 @@ class BooksControllerTest extends TestCase
         $response->assertViewHas('books', function ($viewBooks) {
             return $viewBooks->pluck('reviews_avg_rating')->all() === [4.0, 2.0, null];
         });
+    }
+
+    /**
+     * 所有者が編集画面を開くと、対象の書籍と全ジャンルがビューに渡り、
+     * フォームには既存の値(タイトル・著者)と、紐づいているジャンルのチェックが入る。
+     *
+     * 前提: 書籍1冊(ジャンルAが紐づく)、ジャンルはAとBの2件
+     * 操作: 所有者で GET /books/{book}/edit
+     * 期待: book はその書籍そのもの / genres は登録されている全件(A・B) /
+     *       画面にタイトル・著者が出る / ジャンルAのチェックボックスは checked、Bは checked でない
+     *
+     * AuthorizationTest は「他人だと403になる」までしか見ていないので、
+     * こちらは「本人が開いたときに正しいデータが渡っているか」を別の観点として確認する。
+     */
+    public function test_書籍編集画面には対象の書籍と全ジャンルが渡り既存の値が入る(): void
+    {
+        $owner = User::factory()->create();
+        $genreA = Genre::factory()->create(['name' => '小説']);
+        $genreB = Genre::factory()->create(['name' => '技術書']);
+        $book = Book::factory()->create([
+            'user_id' => $owner->id,
+            'title' => '編集対象のタイトル',
+            'author' => '編集対象の著者',
+        ]);
+        $book->genres()->sync([$genreA->id]);
+
+        $response = $this->actingAs($owner)->get('/books/' . $book->id . '/edit');
+
+        $response->assertOk();
+        $response->assertViewHas('book', function ($viewBook) use ($book) {
+            return $viewBook->is($book);
+        });
+        $response->assertViewHas('genres', function ($viewGenres) use ($genreA, $genreB) {
+            return $viewGenres->pluck('id')->sort()->values()->all()
+                === collect([$genreA->id, $genreB->id])->sort()->values()->all();
+        });
+
+        $response->assertSee('編集対象のタイトル', false);
+        $response->assertSee('編集対象の著者', false);
+
+        $html = $response->getContent();
+        $this->assertMatchesRegularExpression(
+            '/value="' . $genreA->id . '"[^>]*checked/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/value="' . $genreB->id . '"[^>]*checked/',
+            $html
+        );
     }
 }

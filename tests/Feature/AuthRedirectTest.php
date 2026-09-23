@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Book;
 use App\Models\Genre;
 use App\Models\Review;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -146,5 +147,34 @@ class AuthRedirectTest extends TestCase
         $review = Review::factory()->create();
 
         $this->post('/reviews/' . $review->id . '/like')->assertRedirect('/login');
+    }
+
+    // guest ミドルウェア(ログイン済みは /login /register に入れない)
+
+    /**
+     * ログイン済みのユーザーが /login を開くと、ログイン画面ではなく /books に流される。
+     *
+     * Fortify の guest ミドルウェアが config('fortify.home')(= RouteServiceProvider::HOME = '/books')
+     * にリダイレクトする挙動。ログイン済みのまま再度ログイン画面を踏めてしまう不具合を防いでいる。
+     */
+    public function test_ログイン済みでログイン画面を開くとbooksにリダイレクトされる(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/login')
+            ->assertRedirect('/books');
+    }
+
+    /**
+     * ログイン済みのユーザーが /register を開いても、同じく /books に流される。
+     */
+    public function test_ログイン済みで会員登録画面を開くとbooksにリダイレクトされる(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/register')
+            ->assertRedirect('/books');
     }
 }

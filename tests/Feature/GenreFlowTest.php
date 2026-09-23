@@ -114,4 +114,51 @@ class GenreFlowTest extends TestCase
         $response->assertSee('小説の本その2');
         $response->assertDontSee('技術書の本');
     }
+
+    /**
+     * ジャンル一覧には、ジャンル名と紐づく書籍数が正しく表示される。
+     *
+     * 前提: 書籍2冊が紐づくジャンルAと、書籍0冊のジャンルB
+     * 操作: GET /genres
+     * 期待: 200 / Aの名前の直後に「2冊」/ Bの名前の直後に「0冊」が出る
+     *
+     * GenresController@index は withCount('books') で件数を持ってくるだけなので、
+     * 実装を変えたときに件数がズレていないかをここで拾う。
+     */
+    public function test_ジャンル一覧に書籍数が正しく表示される(): void
+    {
+        $user = User::factory()->create();
+        $genreA = Genre::factory()->create(['name' => '小説']);
+        $genreB = Genre::factory()->create(['name' => '技術書']);
+
+        $bookA1 = Book::factory()->create();
+        $bookA2 = Book::factory()->create();
+        $bookA1->genres()->sync([$genreA->id]);
+        $bookA2->genres()->sync([$genreA->id]);
+
+        $response = $this->actingAs($user)->get('/genres');
+
+        $response->assertOk();
+        $response->assertSeeInOrder(['小説', '2冊']);
+        $response->assertSeeInOrder(['技術書', '0冊']);
+    }
+
+    /**
+     * 正しい名前でジャンルを登録すると、一覧へリダイレクトされ genres に1件増える。
+     *
+     * 前提: なし
+     * 操作: POST /genres { name: '新しいジャンル' }
+     * 期待: ジャンル一覧へリダイレクト / success メッセージ / genres に1件追加される
+     */
+    public function test_ジャンルの登録に成功する(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post('/genres', ['name' => '新しいジャンル'])
+            ->assertRedirect(route('genres.index'))
+            ->assertSessionHas('success', 'ジャンルを登録しました。');
+
+        $this->assertDatabaseHas('genres', ['name' => '新しいジャンル']);
+    }
 }
